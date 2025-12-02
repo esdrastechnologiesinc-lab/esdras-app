@@ -1,4 +1,4 @@
 [build]
-base = "Client"
+base = "esdras-app/Client"
 command = "npm run build"
-publish = "Client/build"
+publish = "esdras-app/Client/build"
