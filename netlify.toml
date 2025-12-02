@@ -1,8 +1,4 @@
 [build]
-IMPORTANT: This tells Netlify to change directory into 'client' first.
-If your folder is named 'app' or 'frontend', change 'client' below.
 base = "client"
-This is the command to run after changing the directory.
 command = "npm run build"
-This is where the final, finished website files will be located after the build runs.
 publish = "client/build"
