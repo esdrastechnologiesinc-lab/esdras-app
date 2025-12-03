@@ -1,101 +1,169 @@
-// ... (Your existing imports)
+import React, { useState, useEffect } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
-// --- STUB COMPONENTS (Updated Scan component below) ---
-// ... (The rest of your stubs remain here)
+export default function Scan() {
+  const [status, setStatus] = useState('checking'); // checking | noMesh | scanning | done
+  const [countdown, setCountdown] = useState(8);
+  const navigate = useNavigate();
+  const auth = getAuth();
 
-// --- SCAN COMPONENT (Interactive Mock to feed data to Checkout) ---
-const Scan = ({ user, setCurrentPrescription, navigate }) => {
-    const [hairType, setHairType] = useState('Wavy Medium');
-    const [desiredLength, setDesiredLength] = useState('Shorten Significantly');
-    const [status, setStatus] = useState('input'); // 'input', 'scanning', 'ready'
+  // Phase 1: Feature Entry & Profile Check
+  useEffect(() => {
+    const checkMesh = async (user) => {
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
+      const data = snap.data();
 
-    const generatePrescription = useCallback(() => {
-        // Mock data based on inputs
-        const recommendation = hairType.includes('Wavy') && desiredLength.includes('Shorten') 
-            ? "Textured Crop with Tapered Sides" 
-            : "Precision Layering for Volume";
-        
-        return {
-            recommendation,
-            hairType,
-            desiredLength,
-            maintenance: "Medium (4-6 weeks)"
-        };
-    }, [hairType, desiredLength]);
-
-    const handleRunScan = () => {
-        setStatus('scanning');
-        // Simulate scanning time
-        setTimeout(() => {
-            const result = generatePrescription();
-            setCurrentPrescription(result);
-            setStatus('ready');
-        }, 1500);
+      if (data?.has3DMesh) {
+        // Already scanned before → go straight to styles
+        navigate('/styles');
+      } else {
+        setStatus('noMesh');
+      }
     };
 
-    const handleCheckout = () => {
-        navigate('/checkout');
-    };
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        checkMesh(user);
+      } else {
+        navigate('/login');
+      }
+    });
+  }, [navigate]);
 
-    const selectClass = "w-full p-3 border border-gray-300 rounded-lg focus:ring-[#B8860B] focus:border-[#B8860B] bg-white text-gray-800";
-    const prescription = generatePrescription();
+  // Phase 2: Initial 360° Scan Flow
+  const startScan = () => {
+    setStatus('scanning');
+    let timer = 8;
+    const interval = setInterval(() => {
+      timer--;
+      setCountdown(timer);
+      if (timer <= 0) {
+        clearInterval(interval);
+        finishScan();
+      }
+    }, 1000);
+  };
 
+  const finishScan = async () => {
+    const user = auth.currentUser;
+    await setDoc(doc(db, 'users', user.uid), { has3DMesh: true }, { merge: true });
+    setStatus('done');
+    setTimeout(() => navigate('/styles'), 3000);
+  };
+
+  if (status === 'checking') {
     return (
-        <div className="p-8 bg-white shadow-lg rounded-xl space-y-6">
-            <h2 className="text-2xl font-bold text-[#001F3F]">ESDRAS Precision Scan (Mock)</h2>
-            
-            {status === 'input' && (
-                <div className="space-y-4">
-                    <select value={hairType} onChange={(e) => setHairType(e.target.value)} className={selectClass}>
-                        <option value="Straight Fine">Straight (Fine)</option>
-                        <option value="Wavy Medium">Wavy (Medium)</option>
-                        <option value="Curly Coarse">Curly (Coarse)</option>
-                    </select>
-                    <select value={desiredLength} onChange={(e) => setDesiredLength(e.target.value)} className={selectClass}>
-                        <option value="Shorten Significantly">Shorten Significantly</option>
-                        <option value="Maintain Current">Maintain Current</option>
-                        <option value="Grow Out Slightly">Grow Out Slightly</option>
-                    </select>
-                    <button 
-                        onClick={handleRunScan} 
-                        style={btn} 
-                        className="w-full py-3 mt-4"
-                    >
-                        Run Simulation
-                    </button>
-                </div>
-            )}
-
-            {status === 'scanning' && (
-                <div className="text-center py-10">
-                    <p className="text-[#001F3F] text-xl font-semibold">Scanning and Calculating...</p>
-                    <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-2 bg-[#B8860B] w-1/2 animate-pulse"></div>
-                    </div>
-                </div>
-            )}
-
-            {status === 'ready' && (
-                <div className="space-y-4 border p-4 rounded-lg bg-yellow-50 border-yellow-300">
-                    <p className="text-lg font-bold text-[#001F3F]">Prescription Ready (Locked):</p>
-                    <div className="flex justify-between items-center bg-gray-100 p-3 rounded">
-                        <span className="text-gray-700 font-semibold">{prescription.recommendation}</span>
-                        <span className="text-sm text-red-500 font-bold">LOCKED</span>
-                    </div>
-                    
-                    <button 
-                        onClick={handleCheckout} 
-                        style={{...btn, background: '#001F3F'}} 
-                        className="w-full py-3"
-                    >
-                        Proceed to Payment ($10)
-                    </button>
-                </div>
-            )}
-            
-        </div>
+      <div style={{textAlign:'center', paddingTop:'5rem', color:'#001F3F'}}>
+        <h2>Loading your profile...</h2>
+      </div>
     );
-};
+  }
 
-// ... (The rest of your original code follows)
+  return (
+    <div style={{
+      textAlign: 'center',
+      padding: '2rem 1rem',
+      fontFamily: 'Montserrat, sans-serif',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #001F3F, #0a3d62)'
+    }}>
+      <img src="/esdras-logo.png" alt="ESDRAS" style={{height:'90px', margin:'2rem 0'}} />
 
+      {status === 'noMesh' && (
+        <>
+          <h1 style={{color:'white', fontSize:'2rem', margin:'1.5rem 0'}}>
+            Welcome! Let’s Create Your 3D Head
+          </h1>
+          <p style={{color:'#B8860B', fontSize:'1.2rem', maxWidth:'90%', margin:'0 auto 2rem'}}>
+            One-time 8-second 360° scan unlocks perfect hairstyle previews forever
+          </p>
+
+          <div style={{
+            width:'90%',
+            maxWidth:'400px',
+            height:'450px',
+            background:'#000',
+            borderRadius:'24px',
+            margin:'2rem auto',
+            border:'4px solid #B8860B'
+          }} />
+
+          <div style={{
+            background:'rgba(255,255,255,0.1)',
+            padding:'1.5rem',
+            borderRadius:'16px',
+            margin:'2rem auto',
+            maxWidth:'90%',
+            backdropFilter:'blur(10px)'
+          }}>
+            <p style={{color:'white', margin:'0.8rem 0'}}>
+              <strong>Instructions:</strong><br/>
+              → Good lighting<br/>
+              → Hold phone steady at eye level<br/>
+              → Slowly rotate your head 360°<br/>
+              → Keep face in frame
+            </p>
+          </div>
+
+          <button
+            onClick={startScan}
+            style={{
+              background:'#B8860B',
+              color:'black',
+              fontWeight:'bold',
+              fontSize:'1.4rem',
+              padding:'1.3rem 4rem',
+              border:'none',
+              borderRadius:'50px',
+              marginTop:'1rem'
+            }}
+          >
+            Start 360° Scan Now
+          </button>
+        </>
+      )}
+
+      {status === 'scanning' && (
+        <>
+          <h2 style={{color:'white', fontSize:'1.8rem'}}>Scanning in Progress...</h2>
+          <div style={{
+            width:'200px',
+            height:'200px',
+            border:'8px solid #B8860B',
+            borderTop:'8px solid transparent',
+            borderRadius:'50%',
+            animation:'spin 1.5s linear infinite',
+            margin:'3rem auto'
+          }} />
+          <p style={{color:'#B8860B', fontSize:'3rem', fontWeight:'bold'}}>{countdown}</p>
+          <p style={{color:'white', fontSize:'1.2rem'}}>
+            Rotate slowly • Keep face centered
+          </p>
+        </>
+      )}
+
+      {status === 'done' && (
+        <>
+          <h1 style={{color:'#B8860B', fontSize:'2.5rem'}}>Perfect!</h1>
+          <p style={{color:'white', fontSize:'1.4rem'}}>
+            Your 3D head mesh is ready
+          </p>
+          <p style={{color:'#B8860B', fontWeight:'bold'}}>
+            Redirecting to hairstyle try-on...
+          </p>
+        </>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+    }
