@@ -1,4 +1,6 @@
 // src/app.jsx
+import { doc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';  // If not already there
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -38,6 +40,16 @@ export default function App() {
     });
     return unsub;
   }, []);
+  useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refCode = urlParams.get('ref');
+  if (refCode && auth.currentUser) {
+    setDoc(doc(db, 'users', auth.currentUser.uid), {
+      referredBy: refCode,
+      signupDate: new Date()
+    }, { merge: true }).catch(err => console.error('Referral save failed', err));
+  }
+}, [user]);  // Runs when user logs nullll
 
   const handleLogout = () => {
     signOut(auth);
