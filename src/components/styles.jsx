@@ -1,4 +1,5 @@
 // src/components/styles.jsx — FINAL WITH STYLE-SNAP AI
+import { doc, getDoc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -9,7 +10,20 @@ export default function Styles() {
   const [currentStyle, setCurrentStyle] = useState(null);
   const [showSnap, setShowSnap] = useState(false);  // <-- NEW STATE
 
-  useEffect(() => {
+  useEffect(() => { 
+    useEffect(() => {
+  const load = async () => {
+    const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const data = snap.data();
+    if (!data?.has3DMesh) {
+      navigate('/scan');
+      return;
+    }
+    setUsed(data.stylesUsed || 0);
+    if (data.stylesUsed >= 10) setShowPaywall(true);
+  };
+  load();
+}, [navigate]);
     const q = collection(db, 'styles');
     onSnapshot(q, (snap) => {
       setStyles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
