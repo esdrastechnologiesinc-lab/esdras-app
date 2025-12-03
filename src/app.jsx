@@ -37,6 +37,16 @@ export default function App() {
     });
     return unsub;
   }, [navigate]);
+  useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refCode = urlParams.get('ref');
+  if (refCode && auth.currentUser) {
+    setDoc(doc(db, 'users', auth.currentUser.uid), {
+      referredBy: refCode,
+      signupDate: new Date()
+    }, { merge: true });
+  }
+}, [user]);
 
   const logout = () => {
     signOut(auth);
