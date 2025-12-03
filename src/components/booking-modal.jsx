@@ -1,4 +1,5 @@
 // src/components/booking-modal.jsx 
+import { doc, increment, setDoc } from 'firebase/firestore';
 import { triggerReferralReward } from '../utils/referral';
 import React, { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -26,6 +27,10 @@ export default function BookingModal({ barber, styleName, onClose }) {
         status: 'confirmed',
         createdAt: serverTimestamp()
       });
+      await setDoc(doc(db, 'revenue', barber.id), {
+  earnings: increment(booking.amount * 0.9),
+  esdrasCommission: increment(booking.amount * 0.1)
+}, { merge: true });
       await triggerReferralReward(auth.currentUser.uid);
 
       // Triggers +3 premium previews for both users if first booking via referral
