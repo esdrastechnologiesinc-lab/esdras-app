@@ -13,7 +13,15 @@ export default function BarberProfile() {
   useEffect(() => {
     getDoc(doc(db, 'barbers', id)).then(snap => {
       if (snap.exists()) setBarber({ id: snap.id, ...snap.data() });
-    });
+    }); 
+    useEffect(() => {
+  const fetch = async () => {
+    const snap = await getDoc(doc(db, 'barbers', id));
+    if (snap.exists()) setBarber(snap.data());
+    else alert('Invalid barber profile');
+  };
+  fetch();
+}, [id]);
   }, [id]);
 
   if (!barber) return <div style={{textAlign:'center', padding:'5rem', color:'#001F3F'}}><h2>Loading...</h2></div>;
