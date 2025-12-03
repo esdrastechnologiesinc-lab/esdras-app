@@ -1,4 +1,5 @@
-import React from 'react';
+import ImportStyle from './components/importstyle';
+importt React from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import Login from './components/login';
@@ -36,7 +37,8 @@ function App() {
 </header>
 
       <main style={{ padding: '3rem', maxWidth: '1200px', margin: '0 auto' }}>
-        <Routes>
+        <Routes> 
+          <Route path="/import" element={<ImportStyle />} />
           <Route path="/login" element={<Login />} />
           <Route path="/" element={user ? <Home user={user} /> : <Login />} />
           <Route path="/scan" element={<Scan user={user} />} />
