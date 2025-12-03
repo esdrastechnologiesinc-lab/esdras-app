@@ -1,4 +1,5 @@
-// src/app.jsx
+// src/app.jsx 
+import { doc, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
