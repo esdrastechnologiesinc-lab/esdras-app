@@ -12,8 +12,7 @@ const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__f
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 // --- Stripe Configuration ---
-// !!! IMPORTANT: REPLACE THIS PLACEHOLDER WITH YOUR ACTUAL STRIPE PUBLISHABLE KEY !!!
-const STRIPE_PK = 'YOUR_STRIPE_PUBLISHABLE_KEY'; 
+const STRIPE_PK = 'pk_test_51SaFW5AfXtDdFCGlAboHiWv9DbJiwZSmdfPPioyOGeQ2Xk9tYFMHcUH5uGjeVZgsIAWxcDAqADHxH19kM2Ahlaif007h5rZQmy'; 
 
 // Initialize Stripe Promise
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
