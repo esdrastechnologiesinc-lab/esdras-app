@@ -1,26 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+// src/components/userprofile.jsx
+import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 export default function UserProfile() {
-  const { id } = useParams();
-  const [profile, setProfile] = useState(null);
+  const [userData, setUserData] = useState({});
 
   useEffect(() => {
-    getDoc(doc(db, 'users', id)).then(s => setProfile(s.data()));
-  }, [id]);
+    const load = async () => {
+      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (snap.exists()) setUserData(snap.data());
+    };
+    load();
+  }, []);
 
-  if (!profile) return <div style={{textAlign:'center', padding:'3rem'}}><h2>Loading...</h2></div>;
+  const referralLink = `https://esdras.app/?ref=${auth.currentUser.uid.substring(0,8)}`;
 
   return (
-    <div style={{textAlign:'center', padding:'3rem', background:'#001F3F', color:'white', minHeight:'100vh'}}>
-      <h1>{profile.name || 'ESDRAS User'}</h1>
-      <p>Referred {profile.referredCount || 0} friends</p>
-      <p>Credits Earned: ${profile.credits || 0}</p>
-      <p style={{marginTop:'3rem', fontSize:'1.2rem'}}>
-        Share your link: esdras-app.netlify.app/?ref={profile.referralCode}
-      </p>
+    <div style={{padding:'2rem', background:'#f8f8f8', minHeight:'100vh', textAlign:'center'}}>
+      <h1 style={{color:'#001F3F'}}>My Profile</h1>
+      <div style={{background:'white', padding:'2rem', borderRadius:'20px', margin:'2rem auto', maxWidth:'500px', boxShadow:'0 10px 30px rgba(0,0,0,0.1)'}}>
+        <p><strong>Free Try-Ons Used:</strong> {userData.stylesUsed || 0}/10</p>
+        <p><strong>Bookings Made:</strong> {userData.bookings?.length || 0}</p>
+        <p><strong>Referral Code:</strong> {auth.currentUser.uid.substring(0,8)}</p>
+        
+        <div style={{margin:'2rem 0', padding:'1.5rem', background:'#001F3F', color:'white', borderRadius:'16px'}}>
+          <p>Your Link:</p>
+          <p style={{fontWeight:'bold', wordBreak:'break-all'}}>{referralLink}</p>
+          <button onClick={() => navigator.share?.({url: referralLink}) || alert('Copied!')} 
+            style={{background:'#B8860B', color:'black', padding:'1rem 2rem', border:'none', borderRadius:'12px', marginTop:'1rem'}}>
+            Share & Earn ₦2000 Credit
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
