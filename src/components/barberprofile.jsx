@@ -27,9 +27,11 @@ export default function BarberProfile() {
         <p><strong>Specialty:</strong> {barber.specialty || 'All Styles'}</p>
       </div>
 
-      <button style={{background:'#B8860B', color:'black', padding:'1.5rem 5rem', fontSize:'1.6rem', border:'none', borderRadius:'50px', fontWeight:'bold'}}>
-        Book Appointment
-      </button>
+      <button onClick={() => setShowBooking(true)} style={{background:'#B8860B', color:'black', padding:'1rem 3rem', border:'none', borderRadius:'16px'}}>
+  Book Appointment
+</button>
+
+{showBooking && <BookingModal barber={barber} styleName="High Fade" onClose={() => setShowBooking(false)} />}
 
       <p style={{marginTop:'2rem', opacity:0.8}}>
         Share this profile → esdras.app/barber/{id}
