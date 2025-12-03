@@ -1,10 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css'; // Used to import Tailwind base styles
+import ReactDOM from 'react-dom/client'; // Notice the '/client' import for React 18
 import App from './App';
-​const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Create the root element using the modern React 18 API
+const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Render the application
 root.render(
-<React.StrictMode>
-<App />
-</React.StrictMode>
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
