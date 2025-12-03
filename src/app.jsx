@@ -154,120 +154,101 @@ const PaywallModal = ({ onClose }) => (
           <li className="flex items-center">
             <span style={{ color: COLORS.GOLD }} className="mr-3">✓</span> Priority Booking Access
           </li>
-        </ul>
-        
-        {/* Call to Action - Gold Accent */}
-        <button 
-          className="w-full py-4 rounded-xl text-navy-900 font-bold text-xl shadow-xl transition duration-300 hover:bg-yellow-300"
-          style={{ backgroundColor: COLORS.GOLD }}
-        >
-          Subscribe Now - $9.99/mo
-        </button>
-        <button onClick={onClose} className="mt-4 text-sm text-gray-400 hover:text-white underline">
-          Maybe later
-        </button>
-      </div>
-    </div>
-  </div>
-);
+import React, { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 
-// --- Main App Component ---
-const App = () => {
-  const [stylesUsed, setStylesUsed] = useState(INITIAL_STYLES_USED);
-  const [selectedStyle, setSelectedStyle] = useState(mockStyles[0]);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [message, setMessage] = useState('');
+// Base 64 string of a simplified, placeholder logo image.
+// NOTE: In a real environment, this image would be stored in the 'public' folder.
+const LOGO_URL = 'https://placehold.co/150x40/0A192F/FFC800?text=ESDRAS+Logo';
 
-  // Function to simulate style selection and counter check
-  const handleStyleSelect = (style) => {
-    setSelectedStyle(style);
-    
-    if (stylesUsed >= MAX_FREE_STYLES) {
-      setShowPaywall(true);
-      setMessage("Limit reached. Please subscribe.");
-      return;
-    }
-    
-    // Simulate using a free style count
-    setStylesUsed(prev => prev + 1);
-    setMessage(`Previewing "${style.name}". Styles used: ${stylesUsed + 1}/${MAX_FREE_STYLES}`);
+// Main Application Component
+export default function App() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Define primary brand colors using Tailwind classes
+  const brandColors = {
+    primary: 'bg-[#0A192F]', // Dark Navy/Blue
+    accent: 'text-[#FFC800]', // Gold/Orange Accent
+    textLight: 'text-white',
   };
 
-  const handleBook = () => {
-    setMessage(`Booking flow initiated for ${selectedStyle.name}. Redirecting to Barber Match...`);
-  };
+  const NavItem = ({ children }) => (
+    <a href="#" className={`block px-4 py-2 hover:bg-gray-700 ${brandColors.textLight}`}>
+      {children}
+    </a>
+  );
 
-  const handleShare = () => {
-    setMessage(`Image for ${selectedStyle.name} saved and ready to share!`);
-  };
-
-  useEffect(() => {
-    // Clear message after 4 seconds
-    const timer = setTimeout(() => setMessage(''), 4000);
-    return () => clearTimeout(timer);
-  }, [message]);
-  
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      
-      {/* Header and Style Counter */}
-      <Header />
-      <StyleCounter count={stylesUsed} />
-      
-      {/* Global Message Box */}
-      {message && (
-        <div className="mx-4 mt-2 p-3 text-sm font-medium text-center text-white bg-indigo-600 rounded-lg shadow-md transition-opacity duration-300">
-          {message}
+    <div className={`min-h-screen ${brandColors.primary} p-4 sm:p-6 font-sans`}>
+      {/* Navigation Bar */}
+      <header className={`sticky top-0 z-10 w-full p-4 flex justify-between items-center shadow-lg ${brandColors.primary}`}>
+        {/* Logo and App Title */}
+        <div className="flex items-center space-x-3">
+          <img 
+            src={LOGO_URL} 
+            alt="ESDRAS Logo Placeholder" 
+            className="h-8 w-auto rounded"
+            // Fallback in case placeholder fails
+            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x30/000/fff?text=ESDRAS"; }} 
+          />
+          <h1 className={`text-xl font-bold ${brandColors.textLight}`}>
+            ESDRAS MVP
+          </h1>
+        </div>
+        
+        {/* Desktop Navigation (Hidden on Mobile) */}
+        <nav className="hidden sm:flex space-x-6">
+          <NavItem>Dashboard</NavItem>
+          <NavItem>About</NavItem>
+          <NavItem>Settings</NavItem>
+        </nav>
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="sm:hidden p-2 rounded-lg text-white" 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </header>
+
+      {/* Mobile Dropdown Menu */}
+      {isMenuOpen && (
+        <div className={`sm:hidden absolute top-16 left-0 right-0 shadow-lg ${brandColors.primary} z-20`}>
+          <NavItem>Dashboard</NavItem>
+          <NavItem>About</NavItem>
+          <NavItem>Settings</NavItem>
         </div>
       )}
 
-      {/* Style Preview Section */}
-      <main className="flex-grow p-4">
-        <AIPreview 
-          styleName={selectedStyle.name} 
-          onBook={handleBook} 
-          onShare={handleShare}
-        />
-        
-        {/* Style Selection Library (Scrollable) */}
-        <div className="mt-8">
-          <h3 className="text-xl font-bold mb-3 text-gray-800 border-b pb-2">Style Library</h3>
-          <div className="flex space-x-4 overflow-x-auto pb-4">
-            {mockStyles.map(style => (
-              <button
-                key={style.id}
-                onClick={() => handleStyleSelect(style)}
-                className={`flex-shrink-0 w-32 h-40 rounded-xl p-3 shadow-lg transition duration-200 text-left ${
-                  selectedStyle.id === style.id ? 'border-4 border-indigo-600 ring-4 ring-indigo-300 bg-white' : 'bg-white hover:shadow-xl'
-                }`}
-              >
-                <div className="w-full h-2/3 bg-gray-300 rounded-lg flex items-center justify-center text-xs font-semibold text-gray-600">
-                  {style.name} Mock
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-900 truncate">{style.name}</p>
-                <p className="text-xs text-gray-500">{style.texture}</p>
-              </button>
-            ))}
-            <button
-                onClick={() => handleStyleSelect({ id: 99, name: "Premium Look", texture: "New", length: "Long" })}
-                className="flex-shrink-0 w-32 h-40 rounded-xl p-3 shadow-lg transition duration-200 text-left bg-navy-800 border-2 border-gold-500 hover:scale-105"
-                style={{ backgroundColor: COLORS.NAVY }}
-            >
-                <div className="w-full h-2/3 bg-gray-800 rounded-lg flex flex-col items-center justify-center text-xs font-semibold text-white">
-                    <Zap size={24} style={{ color: COLORS.GOLD }} className="mb-1" />
-                    PREMIUM STYLE
-                </div>
-                <p className="mt-2 text-sm font-medium text-white truncate">Exclusive Import</p>
-                <p className="text-xs" style={{ color: COLORS.GOLD }}>Requires Subscription</p>
-            </button>
+      {/* Main Content Area */}
+      <main className="flex justify-center pt-8 pb-16">
+        <div className="w-full max-w-4xl">
+          {/* Central Content Card */}
+          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl border-t-4 border-[#FFC800]">
+            <h2 className="text-3xl font-extrabold mb-4 text-gray-900">
+              Welcome to the ESDRAS Simulation
+            </h2>
+            <p className="text-gray-600 mb-6">
+              This is the minimum viable product (MVP) interface. We have established a robust, responsive shell that is now ready to incorporate the core business logic, data models, and simulations.
+            </p>
+            
+            {/* Example Section */}
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className={`font-semibold ${brandColors.accent} mb-1`}>Status Check</p>
+              <p className="text-sm text-gray-700">
+                The core React environment and Tailwind styling engine are fully operational. Ready for next feature integration.
+              </p>
+            </div>
           </div>
         </div>
       </main>
-      
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+
+      {/* Simple Footer */}
+      <footer className={`w-full text-center py-4 text-xs ${brandColors.textLight} opacity-80 mt-auto`}>
+        &copy; {new Date().getFullYear()} ESDRAS Technologies Inc. All rights reserved.
+      </footer>
     </div>
   );
-};
-
-export default App;
+}
 
