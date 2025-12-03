@@ -59,7 +59,10 @@ export default function Styles() {
             alert(`${newStyle.name} imported! Trying it now...`);
           }}
           onClose={() => setShowSnap(false)}
-        />
+        /> 
+      <button onClick={downloadWhatIf} style={{background:'#001F3F', color:'white', padding:'1rem 3rem', border:'none', borderRadius:'16px', margin:'1rem'}}>
+  Download What-If Image
+</button>
       )}
 
       {currentStyle && (
