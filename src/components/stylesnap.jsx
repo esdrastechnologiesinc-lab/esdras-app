@@ -117,7 +117,14 @@ export default function StyleSnap({ onStyleImported, onClose }) {
         }}
       >
         ×
-      </button>
+      </button> 
+
+    // Add inside the main div, after the close button
+useEffect(() => {
+  const handleEsc = (e) => e.key === 'Escape' && closeModal();
+  window.addEventListener('keydown', handleEsc);
+  return () => window.removeEventListener('keydown', handleEsc);
+}, []);
 
       {/* Pulse Animation */}
       <style jsx>{`
@@ -275,5 +282,53 @@ export default function StyleSnap({ onStyleImported, onClose }) {
               }}
             >
               {isSaving ? 'Saving…' : 'Save to My Library'}
-            </button>
-         ...                  
+            </button> 
+            onClick={retakePhoto}
+            style={{
+              background: 'transparent',
+              border: `2px solid ${GOLD}`,
+              color: GOLD,
+              padding: '1rem 3rem',
+              fontSize: '1.4rem',
+              fontWeight: '600',
+              borderRadius: '50px',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+            }}
+          >
+            Retake Photo
+          </button>
+        </>
+      )}
+
+      {/* SUCCESS */}
+      {step === 'success' && (
+        <>
+          <h2 style={{ color: GOLD, fontSize: '2.5rem', fontWeight: '700' }}>
+            Saved!
+          </h2>
+
+          <p style={{ fontSize: '1.6rem', margin: '2.5rem 0' }}>
+            <strong>{styleName}</strong> is now in your library
+          </p>
+
+          <button
+            onClick={closeModal}
+            style={{
+              background: GOLD,
+              color: 'black',
+              padding: '1.4rem 5.5rem',
+              fontSize: '1.6rem',
+              fontWeight: '600',
+              border: 'none',
+              borderRadius: '50px',
+              marginTop: '2rem',
+            }}
+          >
+            Try It On
+          </button>
+        </>
+      )}
+    </div>
+  );
+      }
