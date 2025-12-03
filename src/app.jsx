@@ -1,6 +1,4 @@
 // src/app.jsx
-import { doc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';  // If not already there
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -9,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 
-// === ALL COMPONENTS (lowercase + kebab-case) ===
+// Components (lowercase)
 import scan from './components/scan';
 import styles from './components/styles';
 import checkout from './components/checkout';
@@ -20,8 +18,8 @@ import bookingModal from './components/booking-modal';
 import referral from './components/referral';
 import home from './components/home';
 
-// === FIREBASE & STRIPE ===
-const firebaseConfig = { /* your config here */ };
+// Firebase & Stripe init
+const firebaseConfig = { /* your config */ };
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
@@ -30,92 +28,44 @@ const stripePromise = loadStripe('pk_test_51SaFW5AfXtDdFCGlAboHiWv9DbJiwZSmdfPPi
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setLoading(false);
+      if (!u) navigate('/login');
     });
     return unsub;
-  }, []);
-  useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const refCode = urlParams.get('ref');
-  if (refCode && auth.currentUser) {
-    setDoc(doc(db, 'users', auth.currentUser.uid), {
-      referredBy: refCode,
-      signupDate: new Date()
-    }, { merge: true }).catch(err => console.error('Referral save failed', err));
-  }
-}, [user]);  // Runs when user logs nullll
+  }, [navigate]);
 
-  const handleLogout = () => {
+  const logout = () => {
     signOut(auth);
-    navigate('/');
+    navigate('/login');
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#001F3F',
-        color: '#B8860B',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Montserrat, sans-serif'
-      }}>
-        <h1>ESDRAS</h1>
-      </div>
-    );
+  if (!user) {
+    return <div style={{textAlign:'center', padding:'5rem'}}><h2>Login to access ESDRAS</h2></div>;
   }
 
   return (
     <Elements stripe={stripePromise}>
       <div style={{ fontFamily: 'Montserrat, sans-serif', minHeight: '100vh', background: '#f8f8f8' }}>
-        
-        {/* HEADER */}
-        <header style={{
-          background: '#001F3F',
-          color: '#B8860B',
-          padding: '1rem',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100
-        }}>
-          <div style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 'bold' }}>ESDRAS</h1>
-              <p style={{ margin: '0.3rem 0', fontSize: '0.9rem', color: '#ccc' }}>Precision Grooming</p>
-            </div>
-
-            {user && (
-              <nav style={{ display: 'flex', gap: '1.8rem', alignItems: 'center' }}>
-                <Link to="/" style={navLink}>Home</Link>
-                <Link to="/scan" style={navLink}>Scan</Link>
-                <Link to="/styles" style={navLink}>Styles</Link>
-                <Link to="/barbers" style={navLink}>Barbers</Link>
-                <Link to="/profile" style={navLink}>Profile</Link>
-                <Link to="/referral" style={navLink}>Refer & Earn</Link>
-                {user.isBarber && <Link to="/barber/dashboard" style={navLink}>Dashboard</Link>}
-                <button onClick={handleLogout} style={goldBtn}>Logout</button>
-              </nav>
-            )}
+        <header style={{ background: '#001F3F', color: '#B8860B', padding: '1rem', position: 'sticky', top: 0 }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
+            <h1 style={{ margin: 0, fontSize: '2rem' }}>ESDRAS</h1>
+            <nav style={{ display: 'flex', gap: '1rem' }}>
+              <Link to="/" style={{ color: '#B8860B', textDecoration: 'none' }}>Home</Link>
+              <Link to="/scan" style={{ color: '#B8860B', textDecoration: 'none' }}>Scan</Link>
+              <Link to="/styles" style={{ color: '#B8860B', textDecoration: 'none' }}>Styles</Link>
+              <Link to="/barbers" style={{ color: '#B8860B', textDecoration: 'none' }}>Barbers</Link>
+              <Link to="/profile" style={{ color: '#B8860B', textDecoration: 'none' }}>Profile</Link>
+              <button onClick={logout} style={{ background: '#B8860B', color: 'black', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px' }}>Logout</button>
+            </nav>
           </div>
         </header>
-
-        {/* MAIN CONTENT */}
-        <main style={{ padding: '2rem 1rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
           <Routes>
-            <Route path="/" element={user ? <styles /> : <home />} />
+            <Route path="/" element={<home user={user} />} />
             <Route path="/scan" element={<scan />} />
             <Route path="/styles" element={<styles />} />
             <Route path="/checkout" element={<checkout />} />
@@ -125,40 +75,10 @@ export default function App() {
             <Route path="/barber/:id" element={<barberProfile />} />
           </Routes>
         </main>
-
-        {/* FOOTER */}
-        <footer style={{
-          background: '#001F3F',
-          color: '#B8860B',
-          textAlign: 'center',
-          padding: '2rem',
-          marginTop: '4rem'
-        }}>
-          <p>© 2025 ESDRAS — Precision Grooming. All Rights Reserved.</p>
-          <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-            Built for the culture. No regrets. Ever.
-          </p>
+        <footer style={{ textAlign: 'center', padding: '2rem', background: '#001F3F', color: '#B8860B' }}>
+          © 2025 ESDRAS — Precision Grooming
         </footer>
       </div>
     </Elements>
   );
 }
-
-// Reusable styles
-const navLink = {
-  color: '#B8860B',
-  textDecoration: 'none',
-  fontWeight: 'bold',
-  fontSize: '1.1rem',
-  transition: 'opacity 0.2s',
-};
-
-const goldBtn = {
-  background: '#B8860B',
-  color: 'black',
-  border: 'none',
-  padding: '0.7rem 1.4rem',
-  borderRadius: '12px',
-  fontWeight: 'bold',
-  cursor: 'pointer'
-};
