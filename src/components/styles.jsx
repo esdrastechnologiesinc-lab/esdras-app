@@ -1,51 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { getAuth } from 'firebase/auth';
-import { getDoc, doc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase'; // You'll create this in 10 seconds
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import html2canvas from 'html2canvas';
+
+function Head() {
+  return (
+    <mesh>
+      <sphereGeometry args={[1.5, 32, 32]} />
+      <meshStandardMaterial color="#f4c2a1" />
+    </mesh>
+  );
+}
 
 export default function Styles({ user }) {
-  const [stylesUsed, setStylesUsed] = useState(0);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [count, setCount] = useState(0);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     if (user) {
-      const userRef = doc(db, 'users', user.uid);
-      getDoc(userRef).then((snap) => {
-        const data = snap.data() || { stylesUsed: 0 };
-        setStylesUsed(data.stylesUsed);
-        if (data.stylesUsed >= 10) setShowPaywall(true);
+      getDoc(doc(db, 'users', user.uid)).then(s => {
+        const data = s.data() || { count: 0 };
+        setCount(data.count);
+        if (data.count >= 10) setBlocked(true);
       });
     }
   }, [user]);
 
-  const tryStyle = () => {
-    if (stylesUsed >= 10) {
-      setShowPaywall(true);
-    } else {
-      setStylesUsed(stylesUsed + 1);
-      setDoc(doc(db, 'users', user.uid), { stylesUsed: stylesUsed + 1 }, { merge: true });
-      alert("New style applied! (3D preview coming in v2)");
-    }
+  const tryStyle = async () => {
+    if (count >= 10) return setBlocked(true);
+    const newC = count + 1;
+    setCount(newC);
+    await setDoc(doc(db, 'users', user.uid), { count: newC }, { merge: true });
+  };
+
+  const downloadWhatIf = () => {
+    html2canvas(document.getElementById('preview')).then(c => {
+      const a = document.createElement('a');
+      a.href = c.toDataURL();
+      a.download = 'ESDRAS-WhatIf.png';
+      a.click();
+    });
   };
 
   return (
-    <div style={{ textAlign: 'center', padding: '3rem' }}>
-      <h2 style={{ color: '#001F3F' }}>Your Style Library</h2>
-      <p>Styles tried: <strong>{stylesUsed}/10 free</strong></p>
+    <div style={{padding:'1rem', textAlign:'center'}}>
+      <h2 style={{color:'#001F3F'}}>3D Try-On</h2>
+      <p>Free styles used: {count}/10</p>
 
-      {showPaywall ? (
-        <div style={{ marginTop: '3rem', padding: '2rem', background: '#fff', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-          <h3>You've unlocked premium access!</h3>
-          <p>Subscribe to continue unlimited 3D try-ons</p>
-          <button style={{ background: '#B8860B', color: 'white', padding: '1rem 3rem', fontSize: '1.3rem', border: 'none', borderRadius: '12px' }}>
-            $9.99/mo – Unlimited Styles
+      <div id="preview" style={{background:'white', padding:'1rem', borderRadius:'16px'}}>
+        <div style={{height:'500px', background:'#f0f0f0', borderRadius:'12px'}}>
+          <Canvas>
+            <ambientLight />
+            <directionalLight position={[5,5,5]} />
+            <Head />
+            <OrbitControls />
+          </Canvas>
+        </div>
+        <p style={{fontSize:'1.5rem', margin:'1rem', color:'#001F3F'}}>High Fade Preview</p>
+      </div>
+
+      {blocked ? (
+        <div style={{margin:'2rem', padding:'2rem', background:'#001F3F', color:'white', borderRadius:'16px'}}>
+          <h3>Upgrade for Unlimited</h3>
+          <p>$9.99/month</p>
+          <button style={{background:'#B8860B', padding:'1rem 3rem', border:'none', borderRadius:'12px'}}>
+            Subscribe Now
           </button>
         </div>
       ) : (
-        <button onClick={tryStyle} style={{ background: '#B8860B', color: 'white', padding: '1.5rem 4rem', fontSize: '1.5rem', border: 'none', borderRadius: '12px', marginTop: '3rem' }}>
-          Try New Hairstyle (3D Preview)
-        </button>
+        <>
+          <button onClick={tryStyle} style={{background:'#B8860B', color:'white', padding:'1.5rem 4rem', fontSize:'1.5rem', border:'none', borderRadius:'12px', margin:'1rem'}}>
+            Try New Style
+          </button>
+          <br/>
+          <button onClick={downloadWhatIf} style={{background:'#001F3F', color:'white', padding:'1rem 2rem', border:'none', borderRadius:'12px', margin:'1rem'}}>
+            Download What-If Image
+          </button>
+        </>
       )}
     </div>
   );
-      }
+}
