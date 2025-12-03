@@ -1,91 +1,122 @@
-// src/components/Referral.jsx — FINAL VIRAL GROWTH ENGINE
+// src/components/Referral.jsx — FINAL VIRAL GROWTH ENGINE (100% matches your 15 pages)
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
 export default function Referral() {
-  const [state, setState] = useState({
-    code: '',
-    referredCount: 0,
-    successfulReferrals: 0,   // Only counts users who BOOKED
-    extraPreviews: 0,
+  const [data, setData] = useState({
+    code: '······',
+    successfulReferrals: 0,
+    premiumPreviews: 0,
     loading: true
   });
 
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user) return;
-    if (!user) return alert('Login required for referrals');
+    if (!user) {
+      setData(d => ({ ...d, loading: false }));
+      return;
+    }
 
     const userRef = doc(db, 'users', user.uid);
-    
-    // Generate code if doesn't exist
-    getDoc(userRef).then(snap => {
-      const data = snap.data() || {};
-      const code = data.referralCode || user.uid.substring(0, 8).toUpperCase();
-      if (!data.referralCode) {
-        setDoc(userRef, { referralCode: code }, { merge: true });
-      }
-      setState(s => ({ ...s, code }));
-    });
 
-    // Listen to referred users who actually BOOKED
-    const referralsQuery = doc(db, 'referrals', user.uid);
-    const unsub = onSnapshot(referralsQuery, (snap) => {
-      if (snap.exists()) {
-        const { successful = 0, extraPreviews = 0 } = snap.data();
-        setState(s => ({ ...s, successfulReferrals: successful, extraPreviews, loading: false }));
-      } else {
-        setState(s => ({ ...s, loading: false }));
+    const unsub = onSnapshot(userRef, (snap) => {
+      if (!snap.exists()) {
+        setData({ code: 'ERROR', successfulReferrals: 0, premiumPreviews: 0, loading: false });
+        return;
       }
+
+      const userData = snap.data();
+      const code = userData.referralCode || user.uid.substring(0, 8).toUpperCase();
+
+      setData({
+        code,
+        successfulReferrals: userData.successfulReferrals || 0,
+        premiumPreviews: userData.premiumPreviews || 0,
+        loading: false
+      });
     });
 
     return unsub;
   }, []);
 
-  const shareLink = `https://esdras.app/?ref=${state.code}`;
-  const whatsappText = `Yo! I just found the dopest grooming app. Try any hairstyle in 3D before you cut — no regrets! Use my link and we both get 3 EXTRA premium previews when you book your first cut: ${shareLink}`;
+  const shareLink = `https://esdras.app/?ref=${data.code}`;
+  const nextReward = data.successfulReferrals >= 3 
+    ? 'You already earned ₦2000!' 
+    : `${3 - (data.successfulReferrals % 3)} more bookings → ₦2000 credit`;
 
   const share = () => {
+    const text = `I’m using ESDRAS to try hairstyles in 3D before cutting. No regrets ever again! Join with my link and we both get 3 FREE premium previews when you book your first cut → ${shareLink}`;
+    
     if (navigator.share) {
-      navigator.share({ title: 'Join ESDRAS!', text: whatsappText, url: shareLink });
+      navigator.share({ title: 'ESDRAS – Precision Grooming', text, url: shareLink });
     } else {
       navigator.clipboard.writeText(shareLink);
-      alert('Link copied! Send it on WhatsApp');
+      alert('Link copied! Send on WhatsApp now');
     }
   };
 
-  if (state.loading) return <p style={{color:'#B8860B', textAlign:'center'}}>Loading your empire...</p>;
+  if (!auth.currentUser) {
+    return null; // Hidden when not logged in
+  }
+
+  if (data.loading) {
+    return <div style={{textAlign:'center', padding:'2rem', color:'#B8860B'}}>Building your empire...</div>;
+  }
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #001F3F, #0a3d62)',
+      background: 'linear-gradient(135deg, #001F3F 0%, #0a3d62 100%)',
       color: 'white',
-      padding: '2rem',
-      borderRadius: '24px',
+      padding: '2.5rem 1.5rem',
+      borderRadius: '28px',
       textAlign: 'center',
       fontFamily: 'Montserrat, sans-serif',
-      margin: '1rem'
+      margin: '1.5rem',
+      border: '2px solid #B8860B',
+      boxShadow: '0 20px 40px rgba(184,134,11,0.2)'
     }}>
-      <h2 style={{fontSize:'1.8rem', color:'#B8860B'}}>Grow Your Free Previews</h2>
-      <p style={{fontSize:'1.1rem', opacity:0.9}}>
-        Refer friends → When they <strong>book their first cut</strong>, you both get
-      </p>
+      <h2 style={{fontSize:'2rem', color:'#B8860B', margin:'0 0 1rem'}}>
+        Viral Growth Engine
+      </h2>
+
+      {/* ₦2000 Credit Progress */}
+      <div style={{
+        background: data.successfulReferrals >= 3 ? '#B8860B' : '#001F3F',
+        color: data.successfulReferrals >= 3 ? 'black' : '#B8860B',
+        padding:'1.2rem',
+        borderRadius:'16px',
+        fontWeight:'bold',
+        fontSize:'1.1rem',
+        border: '2px dashed #B8860B'
+      }}>
+        {nextReward}
+      </div>
+
+      {/* +3 Previews Reward */}
       <div style={{
         background:'#B8860B',
         color:'black',
-        padding:'1rem',
-        borderRadius:'16px',
-        fontSize:'2rem',
+        padding:'1.8rem',
+        borderRadius:'20px',
+        fontSize:'2.4rem',
         fontWeight:'bold',
-        margin:'1.5rem 0'
+        margin:'2rem 0'
       }}>
-        +3 Premium Previews Each
+        +3 PREMIUM PREVIEWS<br/>each time a friend books
       </div>
 
-      <p>Your Code: <strong style={{fontSize:'1.6rem', color:'#B8860B'}}>{state.code}</strong></p>
-      <p>Successful Referrals: <strong style={{color:'#B8860B'}}>{state.successfulReferrals}</strong></p>
-      <p>You have <strong style={{color:'#B8860B'}}>{state.extraPreviews}</strong> extra premium previews</p>
+      <p style={{fontSize:'1.3rem', margin:'1rem 0'}}>
+        Your Code: <span style={{fontSize:'2.2rem', color:'#B8860B', letterSpacing:'6px'}}>{data.code}</span>
+      </p>
+
+      <p style={{margin:'1rem 0'}}>
+        Successful bookings from your link: <strong style={{color:'#B8860B', fontSize:'2rem'}}>{data.successfulReferrals}</strong>
+      </p>
+
+      <p style={{margin:'1rem 0'}}>
+        You have <strong style={{color:'#B8860B'}}>{data.premiumPreviews}</strong> bonus previews
+      </p>
 
       <button
         onClick={share}
@@ -93,19 +124,21 @@ export default function Referral() {
           background:'#B8860B',
           color:'black',
           fontWeight:'bold',
-          padding:'1.4rem 3rem',
+          fontSize:'1.5rem',
+          padding:'1.5rem 4rem',
           border:'none',
           borderRadius:'50px',
-          fontSize:'1.4rem',
-          margin:'1rem 0'
+          margin:'2rem 0',
+          width:'100%',
+          boxShadow:'0 10px 20px rgba(0,0,0,0.3)'
         }}
       >
-        Share on WhatsApp & Earn
+        Share Now & Earn ₦2000 + Previews
       </button>
 
-      <p style={{fontSize:'0.9rem', opacity:0.7, marginTop:'1rem'}}>
-        Pro tip: Share in barber WhatsApp groups — barbers love when clients come with perfect styles
+      <p style={{fontSize:'0.95rem', opacity:0.8, marginTop:'1.5rem'}}>
+        Pro move: Post in barber WhatsApp groups — they’ll thank you when clients arrive with perfect styles
       </p>
     </div>
   );
-}
+    }
