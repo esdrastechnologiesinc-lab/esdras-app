@@ -8,6 +8,7 @@ import { db } from '../firebase';
 export default function BarberProfile() {
   const { id } = useParams();
   const [barber, setBarber] = useState(null);
+  const [showBooking, setShowBooking] = useState(false);
 
   useEffect(() => {
     getDoc(doc(db, 'barbers', id)).then(snap => {
