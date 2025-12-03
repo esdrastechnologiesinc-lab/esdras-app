@@ -1,4 +1,7 @@
 [build]
 command = "npm install && npm run build"
 publish = "build"
-base = "/"
+​[context.production.environment]
+​This explicitly tells Netlify to use the root directory as the base
+​for the build process, overriding any conflicting settings from the dashboard or cache.
+​BASE_DIR = "/"
