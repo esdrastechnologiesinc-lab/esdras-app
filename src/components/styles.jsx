@@ -62,7 +62,14 @@ export default function Styles() {
         /> 
       <button onClick={downloadWhatIf} style={{background:'#001F3F', color:'white', padding:'1rem 3rem', border:'none', borderRadius:'16px', margin:'1rem'}}>
   Download What-If Image
-</button>
+</button>consdiv   const downloadWhatIf = () => {
+  const(document.getElementById('preview')).then(c => {
+    const link = document.createElement('a');
+    link.download = 'ESDRAS-WhatIf.png';
+    link.href = c.toDataURL();
+    link.click();
+  });
+};
       )}
 
       {currentStyle && (
@@ -71,6 +78,6 @@ export default function Styles() {
           {/* Your 3D preview will go here */}
         </div>
       )}
-    </div>
-  );
+    </div>v
+      <div id="preview" style={{background:'white', padding:'1rem', borderRadius:'16px'}}>v  );
             }      
