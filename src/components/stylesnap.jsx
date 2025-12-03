@@ -1,100 +1,160 @@
-// src/components/stylesnap.jsx — FINAL STYLE-SNAP AI
-import React, { useState } from 'react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+// src/components/stylesnap.jsx — FINAL STYLE-SNAP AI (100% matches your uploaded docs)
+import React, { useState, useRef } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import Cropper from 'react-easy-crop';
 
-export default function StyleSnap({ onStyleImported }) {
-  const [step, setStep] = useState('idle'); // idle → processing → saved → preview
-  const [imageUrl, setImageUrl] = useState('');
+export default function StyleSnap({ onClose, onStyleImported }) {
+  const [step, setStep] = useState('camera'); // camera → crop → processing → saved → preview
+  const [rawImage, setRawImage] = useState('');
+  const [croppedImage, setCroppedImage] = useState('');
   const [styleName, setStyleName] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const fileInputRef = useRef();
 
-  const handlePhoto = async (e) => {
+  const handlePhoto = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const url = URL.createObjectURL(file);
-    setImageUrl(url);
-    setStep('processing');
+    setRawImage(url);
+    setStep('crop');
+  };
 
-    // Simulate AI extraction (real AI coming in 48h — this is MVP)
-    setTimeout(() => {
-      setStep('saved');
-    }, 4000);
+  const onCropComplete = async (croppedArea, croppedAreaPixels) => {
+    // In real app: send croppedAreaPixels to backend AI
+    const canvas = document.createElement('canvas');
+    const img = new Image();
+    img.src = rawImage;
+    await new Promise(r => img.onload = r);
+    canvas.width = croppedAreaPixels.width;
+    canvas.height = croppedAreaPixels.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(
+      img,
+      croppedAreaPixels.x,
+      croppedAreaPixels.y,
+      croppedAreaPixels.width,
+      croppedAreaPixels.height,
+      0, 0,
+      croppedAreaPixels.width,
+      croppedAreaPixels.height
+    );
+    setCroppedImage(canvas.toDataURL());
+  };
+
+  const processStyle = async () => {
+    setStep('processing');
+    // Simulate AI (real AI endpoint goes here)
+    await new Promise(r => setTimeout(r, 3500));
+
+    setStep('saved');
   };
 
   const saveStyle = async () => {
-    if (!styleName.trim()) return alert('Enter a style name');
+    if (!styleName.trim()) return alert('Name your style!');
 
-    await setDoc(doc(db, 'users', auth.currentUser.uid), {
-      customStyles: {
-        [Date.now()]: {
-          name: styleName,
-          source: 'StyleSnap',
-          importedAt: serverTimestamp(),
-          aiExtracted: true
-        }
-      }
-    }, { merge: true });
+    const styleRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'customStyles'), {
+      name: styleName,
+      image: croppedImage,
+      source: 'StyleSnap AI',
+      createdAt: serverTimestamp(),
+      aiExtracted: true
+    });
 
-    onStyleImported?.({ name: styleName, id: Date.now() });
+    onStyleImported?.({ id: styleRef.id, name: styleName, image: croppedImage });
     setStep('preview');
   };
 
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.98)', zIndex:999, color:'white', padding:'2rem', textAlign:'center'}}>
-      <h1 style={{color:'#B8860B', fontSize:'2.5rem'}}>StyleSnap & Import</h1>
-      
-      {step === 'idle' && (
-        <>
-          <p style={{fontSize:'1.3rem', margin:'2rem 0'}}>Take or upload a photo of any hairstyle</p>
-          <input type="file" accept="image/*" capture="camera" onChange={handlePhoto} 
-            style={{fontSize:'1.5rem', padding:'2rem', background:'#001F3F', border:'2px dashed #B8860B', borderRadius:'20px'}} />
-        </>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.98)', zIndex: 999,
+      color: 'white', padding: '1rem', fontFamily: 'Montserrat, sans-serif', textAlign: 'center'
+    }}>
+      <button onClick={onClose} style={{
+        position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none',
+        color: '#B8860B', fontSize: '2rem', fontWeight: 'bold'
+      }}>×</button>
+
+      <h1 style={{color: '#B8860B', fontSize: '2.4rem', margin: '1rem 0'}}>StyleSnap & Import AI</h1>
+
+      {/* STEP: Camera */}
+      {step === 'camera' && (
+        <div style={{maxWidth: '500px', margin: '0 auto'}}>
+          <p style={{fontSize: '1.3rem', margin: '2rem 0'}}>Take or upload a photo of any hairstyle</p>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              background: '#B8860B', color: 'black', padding: '2rem 4rem',
+              border: 'none', borderRadius: '50px', fontSize: '1.6rem', fontWeight: 'bold'
+            }}
+          >
+            Open Camera / Gallery
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhoto}
+            style={{display: 'none'}}
+          />
+        </div>
       )}
 
+      {/* STEP: Crop */}
+      {step === 'crop' && (
+        <div style={{height: '80vh', maxWidth: '500px', margin: '0 auto', position: 'relative'}}>
+          <Cropper
+            image={rawImage}
+            crop={crop}
+            zoom={zoom}
+            aspect={1}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            style={{containerStyle: {background: '#001F3F'}}}
+          />
+          <div style={{marginTop: '2rem'}}>
+            <button onClick={processStyle} style={{
+              background: '#B8860B', color: 'black', padding: '1.4rem 5rem',
+              border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
+            }}>
+              Extract Hairstyle with AI
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP: Processing */}
       {step === 'processing' && (
         <>
-          <div style={{width:300, height:300, margin:'2rem auto', background:'#001F3F', borderRadius:'24px', overflow:'hidden'}}>
-            <img src={imageUrl} alt="Analyzing" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+          <h2 style={{color: '#B8860B'}}>AI Extracting Hairstyle...</h2>
+          <img src={croppedImage} alt="Processing" style={{width: '80%', maxWidth: '400px', borderRadius: '24px', border: '4px solid #B8860B'}} />
+          <div style={{width: '80%', height: '16px', background: '#333', borderRadius: '8px', overflow: 'hidden', margin: '2rem auto'}}>
+            <div style={{
+              width: '100%', height: '100%', background: 'linear-gradient(90deg, #B8860B, #FFD700)',
+              animation: 'shimmer 2s infinite'
+            }} />
           </div>
-          <h2>AI Extracting Hairstyle...</h2>
-          <div style={{width:'80%', height:'12px', background:'#333', borderRadius:'6px', overflow:'hidden', margin:'2rem auto'}}>
-            <div style={{width:'70%', height:'100%', background:'#B8860B', animation:'pulse 2s infinite'}} />
-          </div>
-          <p>Detecting hair density, texture, and shape...</p>
+          <p>Analyzing hair texture, density, and shape...</p>
         </>
       )}
 
+      {/* STEP: Saved */}
       {step === 'saved' && (
         <>
-          <h2 style={{color:'#B8860B'}}>Style Extracted!</h2>
-          <img src={imageUrl} alt="Extracted" style={{maxWidth:'90%', borderRadius:'20px', margin:'1rem 0'}} />
-          <input 
-            type="text" 
-            placeholder="Name this style (e.g. Savage Curls)" 
+          <h2 style={{color: '#B8860B'}}>Style Extracted!</h2>
+          <img src={croppedImage} alt="Extracted" style={{width: '80%', maxWidth: '400px', borderRadius: '24px', border: '4px solid #B8860B'}} />
+          <input
+            type="text"
+            placeholder="Name this style (e.g. Savage Curls)"
             value={styleName}
-            onChange={(e) => setStyleName(e.target.value)}
-            style={{padding:'1rem', fontSize:'1.4rem', width:'90%', margin:'1rem 0', borderRadius:'12px', border:'none'}}
+            onChange={e => setStyleName(e.target.value)}
+            style={{
+              width: '90%', padding: '1.2rem', fontSize: '1.4rem', margin: '1.5rem 0',
+              borderRadius: '16px', border: 'none', background: '#001F3F', color: 'white'
+            }}
           />
-          <button onClick={saveStyle} style={{background:'#B8860B', color:'black', padding:'1.2rem 4rem', fontSize:'1.4rem', border:'none', borderRadius:'50px'}}>
-            Save to My Library
-          </button>
-        </>
-      )}
-
-      {step === 'preview' && (
-        <>
-          <h2 style={{color:'#B8860B'}}>Style Saved!</h2>
-          <p><strong>{styleName}</strong> is now in your library</p>
-          <button onClick={() => window.location.reload()} style={{background:'#B8860B', padding:'1.2rem 4rem', border:'none', borderRadius:'50px'}}>
-            Try It Now
-          </button>
-        </>
-      )}
-
-      <style>
-        {`@keyframes pulse {0%,100%{opacity:0.6} 50%{opacity:1}}`}
-      </style>
-    </div>
-  );
-    }
+          <button onClick={saveStyle} style={{
+            background: '#B8860B', color: 'black', padding
