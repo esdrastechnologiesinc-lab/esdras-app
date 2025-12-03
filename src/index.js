@@ -1,6 +1,7 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client'; // Notice the '/client' import for React 18
-import App from './App';
+import ReactDOM from 'react-dom/client'; 
+// *** FINAL FIX: Path is now lowercase and includes extension ***
+import App from './app.jsx'; 
 
 // Create the root element using the modern React 18 API
 const root = ReactDOM.createRoot(document.getElementById('root'));
