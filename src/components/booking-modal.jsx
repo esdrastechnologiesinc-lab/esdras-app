@@ -1,4 +1,5 @@
-// src/components/booking-modal.jsx
+// src/components/booking-modal.jsx 
+import { triggerReferralReward } from '../utils/referral';
 import React, { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -25,6 +26,7 @@ export default function BookingModal({ barber, styleName, onClose }) {
         status: 'confirmed',
         createdAt: serverTimestamp()
       });
+      await triggerReferralReward(auth.currentUser.uid);
 
       // Triggers +3 premium previews for both users if first booking via referral
       await triggerReferralReward(auth.currentUser.uid);
