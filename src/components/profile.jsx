@@ -7,7 +7,13 @@ import { db, auth } from '../firebase';
 export default function UserProfile() {
   const [userData, setUserData] = useState({});
 
-  useEffect(() => {
+  useEffect(() => { 
+    const load = async () => {
+  const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+  if (snap.exists()) setUserData(snap.data());
+  else alert('Invalid user profile');
+};
+load();
     const load = async () => {
       const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
       if (snap.exists()) setUserData(snap.data());
