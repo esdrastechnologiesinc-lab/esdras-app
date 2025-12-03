@@ -1,4 +1,7 @@
-import Scan from './components/scan';
+import BarberDashboard from './components/barberdashboard';
+import BarberProfile from './components/barberprofile';
+import UserProfile from './components/userprofile';
+importt Scan from './components/scan';
 import Styles from './components/styles';
 import Checkout from './components/checkout';
 importt React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -284,7 +287,10 @@ function App() {
 
             <main style={{ padding: '3rem 1rem', maxWidth: '1200px', margin: '0 auto' }}>
                 <Routes>
-  <Route path="/" element={<Home user={user} />} />
+<Route path="/barber/dashboard" element={<BarberDashboard />} />
+<Route path="/barber/:id" element={<BarberProfile />} />
+<Route path="/profile" element={<UserProfile />} />
+                    <Route path="/" element={<Home user={user} />} />
   <Route path="/scan" element={<Scan />} />
   <Route path="/styles" element={<Styles />} />
   <Route path="/checkout" element={<Checkout />} />
