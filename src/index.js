@@ -6,13 +6,12 @@ import { BrowserRouter } from 'react-router-dom';
 import { initializeApp } from 'firebase/app';
 
 const firebaseConfig = {
-  // ← Put your real Firebase config here
-  apiKey: "your-api-key",
+  apiKey: "AIzaSy...your-real-key...",  // ← Paste here
   authDomain: "your-project.firebaseapp.com",
   projectId: "your-project-id",
   storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  messagingSenderId: "123...",
+  appId: "1:123...:web:abc..."
 };
 
 initializeApp(firebaseConfig);
