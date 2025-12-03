@@ -15,6 +15,7 @@ export default function Referral() {
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
+    if (!user) return alert('Login required for referrals');
 
     const userRef = doc(db, 'users', user.uid);
     
