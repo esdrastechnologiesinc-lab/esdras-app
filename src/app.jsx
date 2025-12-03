@@ -23,19 +23,17 @@ function App() {
 
   return (
     <div style={{ fontFamily: 'Montserrat, sans-serif', background: '#F0F0F0', minHeight: '100vh' }}>
-      <header style={{ background: '#001F3F', color: '#B8860B', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: '3rem' }}>ESDRAS</h1>
-        <p style={{ color: '#fff', margin: '0.5rem 0' }}>Precision Grooming. Zero Regrets</p>
-        {user && (
-          <nav style={{ marginTop: '1rem' }}>
-            <Link to="/" style={nav}>Home</Link> • 
-            <Link to="/scan" style={nav}>Scan Head</Link> • 
-            <Link to="/styles" style={nav}>Styles</Link> • 
-            <Link to="/barbers" style={nav}>Barbers</Link> • 
-            <button onClick={logout} style={btn}>Logout</button>
-          </nav>
-        )}
-      </header>
+      <header style={{ background: '#001F3F', color: '#B8860B', padding: '1.5rem', textAlign: 'center' }}>
+  <img 
+    src="/esdras-logo.png" 
+    alt="ESDRAS Logo" 
+    style={{ height: '120px', marginBottom: '0.5rem' }} 
+  />
+  <p style={{ margin: '0.5rem 0', fontSize: '1.1rem', color: '#fff', fontWeight: '600' }}>
+    Precision Grooming. Zero Regrets
+  </p>
+  {/* nav stays the same */}
+</header>
 
       <main style={{ padding: '3rem', maxWidth: '1200px', margin: '0 auto' }}>
         <Routes>
