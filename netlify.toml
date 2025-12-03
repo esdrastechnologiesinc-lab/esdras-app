@@ -1,4 +1,5 @@
 [build]
 base = ""
-command = "npm run build"
+​Install dependencies first, then run the build script
+​command = "npm install && npm run build"
 publish = "build"
