@@ -1,4 +1,5 @@
-// src/components/barberdashboard.jsx
+// src/components/barberdashboard.jsx 
+import { doc, onSnapshot } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -8,7 +9,10 @@ export default function BarberDashboard() {
   const [bookings, setBookings] = useState([]);
   const [earnings, setEarnings] = useState(0);
 
-  useEffect(() => {
+  useEffect(() => { 
+    onSnapshot(doc(db, 'revenue', user.uid), (snap) => {
+  if (snap.exists()) setEarnings(snap.data().earnings || 0);
+});
     const user = auth.currentUser;
     if (!user) return;
 
