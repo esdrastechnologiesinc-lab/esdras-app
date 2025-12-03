@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Scan from './components/scan';
+import Styles from './components/styles';
+import Checkout from './components/checkout';
+importt React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
@@ -280,32 +283,12 @@ function App() {
             </header>
 
             <main style={{ padding: '3rem 1rem', maxWidth: '1200px', margin: '0 auto' }}>
-                <Routes> 
-                    <Route path="/dashboard" element={<UserDashboard />} />
-                    <Route path="/profile/:id" element={<Profile />} />
-                    <Route path="/barber/:id" element={<BarberProfile />} />
-                    <Route path="/barber/dashboard" element={<BarberDashboard />} />
-                    <Route path="/import" element={<ImportStyle />} />
-                    <Route path="/login" element={<Login />} />
-                    
-                    {/* Main Application Routes */}
-                    <Route path="/" element={user ? <Home user={user} /> : <Login />} />
-                    <Route path="/scan" element={user ? <ScanWrapper /> : <Login />} />
-                    <Route path="/styles" element={<Styles />} />
-                    <Route path="/barbers" element={<Barbers />} />
-                    
-                    {/* NEW STRIPE CHECKOUT ROUTE */}
-                    <Route 
-                        path="/checkout" 
-                        element={user 
-                            ? <Checkout 
-                                prescription={currentPrescription} 
-                                savePrescription={savePrescription} 
-                                navigate={navigate} 
-                            /> 
-                            : <Login />} 
-                    />
-                </Routes>
+                <Routes>
+  <Route path="/" element={<Home user={user} />} />
+  <Route path="/scan" element={<Scan />} />
+  <Route path="/styles" element={<Styles />} />
+  <Route path="/checkout" element={<Checkout />} />
+</Routes>
             </main>
 
             <footer style={{ textAlign: 'center', padding: '2rem', background: '#001F3F', color: '#B8860B' }}>
