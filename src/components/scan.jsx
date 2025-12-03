@@ -34,15 +34,14 @@ export default function Scan() {
   };
 
   const finishScan = async () => {
-    await setDoc(doc(db, 'users', auth.currentUser.uid), {
-      has3DMesh: true,
-      stylesUsed: 0,
-      freeStylesRemaining: 10,
-      scanCompletedAt: new Date()
-    }, { merge: true });
-    setStatus('done');
-    setTimeout(() => navigate('/styles'), 3000);
-  };
+  await setDoc(doc(db, 'users', auth.currentUser.uid), {
+    has3DMesh: true,
+    stylesUsed: 0,
+    freeStylesRemaining: 10
+  }, { merge: true });
+  setStatus('done');
+  setTimeout(() => navigate('/styles'), 3000);
+};
 
   return (
     <div style={{minHeight:'100vh', background:'linear-gradient(135deg,#001F3F,#0a3d62)', color:'white', textAlign:'center', padding:'2rem 1rem', fontFamily:'Montserrat,sans-serif'}}>
