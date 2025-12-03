@@ -215,6 +215,68 @@ export default function App() {
       {/* Mobile Dropdown Menu */}
       {isMenuOpen && (
         <div className={`sm:hidden absolute top-16 left-0 right-0 shadow-lg ${brandColors.primary} z-20`}>
+import React, { useState } from 'react'; // *** FIX: Added useState import here ***
+import { Menu, X } from 'lucide-react';
+
+// Base 64 string of a simplified, placeholder logo image.
+const LOGO_URL = 'https://placehold.co/150x40/0A192F/FFC800?text=ESDRAS+Logo';
+
+// Main Application Component
+export default function App() {
+  // This line caused the error due to an invisible character from copy/paste,
+  // but also needed useState to be explicitly imported above.
+  const [isMenuOpen, setIsMenuOpen] = useState(false); 
+
+  // Define primary brand colors using Tailwind classes
+  const brandColors = {
+    primary: 'bg-[#0A192F]', // Dark Navy/Blue
+    accent: 'text-[#FFC800]', // Gold/Orange Accent
+    textLight: 'text-white',
+  };
+
+  const NavItem = ({ children }) => (
+    <a href="#" className={`block px-4 py-2 hover:bg-gray-700 ${brandColors.textLight}`}>
+      {children}
+    </a>
+  );
+
+  return (
+    <div className={`min-h-screen ${brandColors.primary} p-4 sm:p-6 font-sans`}>
+      {/* Navigation Bar */}
+      <header className={`sticky top-0 z-10 w-full p-4 flex justify-between items-center shadow-lg ${brandColors.primary}`}>
+        {/* Logo and App Title */}
+        <div className="flex items-center space-x-3">
+          <img 
+            src={LOGO_URL} 
+            alt="ESDRAS Logo Placeholder" 
+            className="h-8 w-auto rounded"
+            // Fallback in case placeholder fails
+            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/100x30/000/fff?text=ESDRAS"; }} 
+          />
+          <h1 className={`text-xl font-bold ${brandColors.textLight}`}>
+            ESDRAS MVP
+          </h1>
+        </div>
+        
+        {/* Desktop Navigation (Hidden on Mobile) */}
+        <nav className="hidden sm:flex space-x-6">
+          <NavItem>Dashboard</NavItem>
+          <NavItem>About</NavItem>
+          <NavItem>Settings</NavItem>
+        </nav>
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="sm:hidden p-2 rounded-lg text-white" 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </header>
+
+      {/* Mobile Dropdown Menu */}
+      {isMenuOpen && (
+        <div className={`sm:hidden absolute top-16 left-0 right-0 shadow-lg ${brandColors.primary} z-20`}>
           <NavItem>Dashboard</NavItem>
           <NavItem>About</NavItem>
           <NavItem>Settings</NavItem>
