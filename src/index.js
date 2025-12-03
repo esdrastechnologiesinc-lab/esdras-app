@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client'; 
-// *** FINAL FIX: Path is now lowercase and includes extension ***
+import './index.css'; // Confirms the necessary import for styles
 import App from './app.jsx'; 
 
 // Create the root element using the modern React 18 API
