@@ -1,4 +1,5 @@
-import BarberDashboard from './components/barberdashboard';
+import BarberProfile from './components/barberprofile';
+importtt BarberDashboard from './components/barberdashboard';
 importt ImportStyle from './components/importstyle';
 importt React from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
@@ -39,6 +40,7 @@ function App() {
 
       <main style={{ padding: '3rem', maxWidth: '1200px', margin: '0 auto' }}>
         <Routes> 
+          <Route path="/barber/:id" element={<BarberProfile />} />
           <Route path="/barber/dashboard" element={<BarberDashboard />} />
           <Route path="/import" element={<ImportStyle />} />
           <Route path="/login" element={<Login />} />
