@@ -23,7 +23,11 @@ export default function Scan() {
     init();
   }, [navigate]);
 
-  const startScan = () => {
+  <input type="checkbox" id="consent" required /> <label for="consent" style={{color:'white', fontSize:'1.1rem'}}>I agree to privacy policy & data storage for my 3D mesh</label>
+  const startScan = () => { if (!document.getElementById('consent').checked) {
+  alert('Please agree to privacy policy');
+  return;
+  }
     setStatus('scanning');
     let t = 8;
     const i = setInterval(() => {
