@@ -1,11 +1,11 @@
-// src/components/UserDashboard.jsx — FINAL ESDRAS USER DASHBOARD (100% blueprint compliant)
+// src/components/userdashboard.jsx — FINAL ESDRAS USER DASHBOARD (lowercase + 100% blueprint compliant)
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Assuming you're using React Router
+import { Link } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import Referral from './Referral';
-import StyleSnap from './StyleSnap'; // Your viral feature
+import StyleSnap from './StyleSnap';
 
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
@@ -24,8 +24,8 @@ export default function UserDashboard() {
           setUserData(snapshot.data() || {});
         })
         .catch(err => {
-          console.error('Failed to load user data', err);
-          alert('Failed to load your data – check connection');
+          console.error('failed to load user data', err);
+          alert('failed to load your data – check connection');
         })
         .finally(() => setLoading(false));
     }
@@ -34,7 +34,7 @@ export default function UserDashboard() {
   const stylesLeft = 10 - (userData.stylesUsed || 0);
 
   if (!user) {
-    return <div style={{textAlign:'center', padding:'4rem', fontFamily:'Montserrat'}}>Please log in</div>;
+    return <div style={{textAlign:'center', padding:'4rem', fontFamily:'Montserrat'}}>please log in</div>;
   }
 
   return (
@@ -45,7 +45,7 @@ export default function UserDashboard() {
       fontFamily: 'Montserrat, sans-serif',
       paddingBottom: '4rem'
     }}>
-      {/* Premium Header */}
+      {/* premium header */}
       <header style={{
         background: NAVY,
         padding: '3rem 1rem 4rem',
@@ -53,16 +53,16 @@ export default function UserDashboard() {
         borderBottom: `4px solid ${GOLD}`
       }}>
         <h1 style={{fontSize: '3rem', fontWeight: '800', margin: '0 0 0.5rem'}}>
-          My ESDRAS
+          my esdras
         </h1>
         <p style={{fontSize: '1.5rem', opacity: 0.9}}>
-          Welcome back, {user.displayName || 'Groomer'}!
+          welcome back, {user.displayName || 'groomer'}!
         </p>
       </header>
 
       <div style={{maxWidth: '1000px', margin: '0 auto', padding: '0 1rem'}}>
 
-        {/* Stats Card */}
+        {/* stats card */}
         <div style={{
           background: 'rgba(255,255,255,0.05)',
           backdropFilter: 'blur(10px)',
@@ -71,27 +71,27 @@ export default function UserDashboard() {
           padding: '2rem',
           margin: '2rem 0'
         }}>
-          <h2 style={{color: GOLD, fontSize: '2rem', margin: '0 0 1.5rem'}}>Your Progress</h2>
+          <h2 style={{color: GOLD, fontSize: '2rem', margin: '0 0 1.5rem'}}>your progress</h2>
           
           <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', fontSize: '1.2rem'}}>
             <div>
-              <strong>Free Styles Left</strong><br/>
+              <strong>free styles left</strong><br/>
               <span style={{fontSize: '2rem', color: stylesLeft > 3 ? GOLD : '#ff6b6b'}}>
                 {stylesLeft}/10
               </span>
               {stylesLeft <= 3 && <p style={{margin: '0.5rem 0 0', fontSize: '0.9rem', opacity: 0.8}}>
-                Refer friends or upgrade for unlimited!
+                refer friends or upgrade for unlimited!
               </p>}
             </div>
-            <div><strong>Bookings Made:</strong> {userData.bookings?.length || 0}</div>
-            <div><strong>Credits Earned:</strong> {userData.credits || 0}</div>
-            <div><strong>Friends Referred:</strong> {userData.referredCount || 0}</div>
+            <div><strong>bookings made:</strong> {userData.bookings?.length || 0}</div>
+            <div><strong>credits earned:</strong> {userData.credits || 0}</div>
+            <div><strong>friends referred:</strong> {userData.referredCount || 0}</div>
           </div>
         </div>
 
-        {/* Viral Feature Promos */}
+        {/* viral feature promos */}
         <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', margin: '3rem 0'}}>
-          {/* StyleSnap Entry */}
+          {/* stylesnap entry */}
           <button
             onClick={() => setShowStyleSnap(true)}
             style={{
@@ -105,7 +105,7 @@ export default function UserDashboard() {
               cursor: 'pointer'
             }}
           >
-            📸 StyleSnap AI<br/>Import Any Hairstyle
+            📸 stylesnap ai<br/>import any hairstyle
           </button>
 
           <Link
@@ -123,22 +123,21 @@ export default function UserDashboard() {
               display: 'block'
             }}
           >
-            💇 Try New Styles<br/>From Your Library
+            💇 try new styles<br/>from your library
           </Link>
         </div>
 
-        {/* Referral Section */}
+        {/* referral section */}
         <div style={{marginTop: '3rem'}}>
           <Referral user={user} />
         </div>
       </div>
 
-      {/* StyleSnap Modal */}
+      {/* stylesnap modal */}
       {showStyleSnap && (
         <StyleSnap
           onClose={() => setShowStyleSnap(false)}
           onStyleImported={(newStyle) => {
-            // Optional: refresh userData or show toast
             setShowStyleSnap(false);
             alert(`${newStyle.name} imported & ready!`);
           }}
@@ -147,9 +146,9 @@ export default function UserDashboard() {
 
       {loading && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'grid', placeItems: 'center', zIndex: 9999}}>
-          <p style={{fontSize: '1.5rem'}}>Loading your dashboard...</p>
+          <p style={{fontSize: '1.5rem'}}>loading your dashboard...</p>
         </div>
       )}
     </div>
   );
-      }
+                   }
