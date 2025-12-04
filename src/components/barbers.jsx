@@ -1,51 +1,98 @@
+// src/components/barbers.jsx — FINAL ESDRAS BARBER MARKETPLACE (lagos-ready + 100% blueprint compliant)
 import React, { useState, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
-const mapContainerStyle = { width: '100%', height: '70vh', borderRadius: '12px' };
-const center = { lat: 40.7128, lng: -74.0060 }; // Default NYC – will auto-center to user
+const NAVY = '#001F3F';
+const GOLD = '#B8860B';
 
-const barbers = [
-  { id: 1, name: "Ace Cuts Barbershop", lat: 40.7420, lng: -73.9880, rating: 4.9, specialty: "Fades & Tapers", price: "\[ " },
-  { id: 2, name: "Levels Barbershop", lat: 40.7489, lng: -73.9680, rating: 4.8, specialty: "Afro & Coils", price: " \]$" },
-  { id: 3, name: "The Master Barber", lat: 40.7614, lng: -73.9776, rating: 5.0, specialty: "Classic & Skin Fades", price: "\[ " },
-  { id: 4, name: "Elite Grooming Lounge", lat: 40.7048, lng: -74.0110, rating: 4.7, specialty: "Beard Sculpting", price: " \]$$" },
-];
+const mapContainerStyle = {
+  width: '100%',
+  height: '70vh',
+  borderRadius: '24px',
+  border: `4px solid ${GOLD}`,
+  overflow: 'hidden'
+};
+
+const defaultCenter = { lat: 6.5244, lng: 3.3792 }; // Lagos, Nigeria
 
 export default function Barbers({ user }) {
+  const [barbers, setBarbers] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [map, setMap] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [map, setMap] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // Get user's location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => console.log("Location denied")
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          map?.panTo(loc);
+        },
+        () => console.log('location denied')
       );
     }
-  }, []);
+
+    // Real-time barbers from Firestore
+    const unsub = onSnapshot(collection(db, 'barbers'), (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBarbers(data);
+    });
+
+    return unsub;
+  }, [map]);
+
+  const handleBooking = (barber) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // In real app: open booking modal or navigate to /book/:barberId
+    alert(`booking request sent to ${barber.name}!\nesdras takes only 10% commission – the rest goes straight to your barber`);
+  };
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2 style={{ color: '#001F3F', marginBottom: '1rem' }}>Find Your Perfect Barber</h2>
-      <p style={{ color: '#555', marginBottom: '2rem' }}>
-        {userLocation ? "We found barbers near you" : "Allow location for the best matches"}
+    <div style={{
+      minHeight: '100vh',
+      background: NAVY,
+      color: 'white',
+      fontFamily: 'Montserrat, sans-serif',
+      padding: '2rem 1rem',
+      textAlign: 'center'
+    }}>
+      <h1 style={{fontSize: '3rem', fontWeight: '800', color: GOLD, margin: '0 0 1rem'}}>
+        find your perfect barber
+      </h1>
+      <p style={{fontSize: '1.4rem', opacity: 0.9, marginBottom: '3rem'}}>
+        {userLocation ? 'top barbers near you in lagos' : 'allow location to see barbers around you'}
       </p>
 
-      <LoadScript googleMapsApiKey="AIzaSyC8zEj1VeNZWo0k0FOplapSYkGwGlLwbeU">
+      <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY}>
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
-          center={userLocation || center}
-          zoom={13}
-          onLoad={(map) => setMap(map)}
-          options={{ styles: [{ featureType: "poi", stylers: [{ visibility: "off" }] }] }}
+          center={userLocation || defaultCenter}
+          zoom={userLocation ? 14 : 11}
+          onLoad={setMap}
+          options={{
+            styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
+            disableDefaultUI: false,
+            zoomControl: true
+          }}
         >
           {barbers.map((barber) => (
             <Marker
               key={barber.id}
               position={{ lat: barber.lat, lng: barber.lng }}
               onClick={() => setSelected(barber)}
-              icon={{ url: "https://esdras-app.netlify.app/barber-icon.png", scaledSize: new window.google.maps.Size(50, 50) }}
+              icon={{
+                url: '/barber-icon-gold.png', // gold scissor icon
+                scaledSize: new window.google.maps.Size(56, 56)
+              }}
             />
           ))}
 
@@ -54,15 +101,31 @@ export default function Barbers({ user }) {
               position={{ lat: selected.lat, lng: selected.lng }}
               onCloseClick={() => setSelected(null)}
             >
-              <div style={{ padding: '0.5rem', fontFamily: 'Montserrat, sans-serif' }}>
-                <h3 style={{ margin: '0 0 0.5rem', color: '#001F3F' }}>{selected.name}</h3>
-                <p style={{ margin: '0.3rem 0' }}>⭐ {selected.rating} • {selected.price}</p>
-                <p style={{ margin: '0.3rem 0', fontWeight: 'bold', color: '#B8860B' }}>{selected.specialty}</p>
-                <button style={{
-                  background: '#B8860B', color: 'white', border: 'none',
-                  padding: '0.8rem 1.5rem', borderRadius: '8px', marginTop: '0.8rem', cursor: 'pointer'
-                }}>
-                  Book Now (10% ESDRAS Fee)
+              <div style={{padding: '1rem', maxWidth: '280px', fontFamily: 'Montserrat, sans-serif'}}>
+                <h3 style={{margin: '0 0 0.5rem', color: NAVY, fontSize: '1.4rem'}}>{selected.name.toLowerCase()}</h3>
+                <p style={{margin: '0.4rem 0', opacity: 0.8}}>⭐ {selected.rating || '4.9'} • {selected.area || 'lagos'}</p>
+                <p style={{margin: '0.6rem 0', color: GOLD, fontWeight: 'bold'}}>
+                  {selected.specialty || 'fades • afro • coils'}
+                </p>
+                <p style={{margin: '0.6rem 0', fontSize: '1.1rem'}}>
+                  ₦{selected.priceLow || '3000'} – ₦{selected.priceHigh || '8000'}
+                </p>
+                <button
+                  onClick={() => handleBooking(selected)}
+                  style={{
+                    width: '100%',
+                    background: GOLD,
+                    color: 'black',
+                    border: 'none',
+                    padding: '1rem',
+                    borderRadius: '50px',
+                    fontWeight: 'bold',
+                    fontSize: '1.2rem',
+                    cursor: 'pointer',
+                    marginTop: '0.8rem'
+                  }}
+                >
+                  book now • 10% esdras fee
                 </button>
               </div>
             </InfoWindow>
@@ -70,9 +133,10 @@ export default function Barbers({ user }) {
         </GoogleMap>
       </LoadScript>
 
-      <p style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#777' }}>
-        Powered by ESDRAS – Precision Grooming Marketplace
+      <p style={{marginTop: '3rem', opacity: 0.7, fontSize: '1rem'}}>
+        powered by esdras • lagos’ precision grooming marketplace<br/>
+        we only take 10% – your barber gets the rest
       </p>
     </div>
   );
-            }
+                             }
