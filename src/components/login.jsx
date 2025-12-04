@@ -1,90 +1,87 @@
-// src/components/login.jsx — FINAL ESDRAS LOGIN (biometric + 100% blueprint compliant)
+// src/components/login.jsx — FINAL ESDRAS LOGIN (referral-ready + premium branding + 100% blueprint)
 import React, { useState, useEffect } from 'react';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged
-} from 'firebase/auth';
+import { auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from '../firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+import { handleReferralLink } from '../utils/referral';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../firebase'; // assume you export auth from firebase.js
 
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
 
 export default function Login() {
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignup, setIsSignup] = useState(false);
-  const [error, setError] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
-  const auth = getAuth();
 
-  // Check if biometric login is available (WebAuthn / browser fingerprint)
+  // Check if user is already logged in
   useEffect(() => {
-    if ('credentials' in navigator && 'PublicKeyCredential' in window) {
-      setBiometricAvailable(true);
-    }
-  }, []);
-
-  // Auto-login if already signed in
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) navigate('/');
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (user) {
+        handleReferralLink(user.uid);
+        navigate('/styles');
+      }
     });
     return unsub;
-  }, [auth, navigate]);
+  }, [navigate]);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      await createUserProfile(result.user);
+      await handleReferralLink(result.user.uid);
+      // Clean URL after processing referral
+      window.history.replaceState({}, '', window.location.pathname);
+      navigate('/styles');
+    } catch (err) {
+      setError('Google sign-in failed — try again');
+      setLoading(false);
+    }
+  };
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
+    if (!email || !password || (isSignup && !name)) return;
+
+    setLoading(true);
     setError('');
-    setLoading(true);
     try {
+      let userCredential;
       if (isSignup) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await userCredential.user.updateProfile({ displayName: name });
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       }
-      navigate('/');
+
+      const user = userCredential.user;
+      await createUserProfile(user);
+      await handleReferralLink(user.uid);
+      window.history.replaceState({}, '', window.location.pathname);
+      navigate('/styles');
     } catch (err) {
-      setError(err.message.includes('wrong-password') || err.message.includes('user-not-found') 
-        ? 'invalid email or password' 
-        : err.message);
-    } finally {
+      setError(isSignup ? 'Sign-up failed — try again' : 'Wrong email or password');
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      navigate('/');
-    } catch (err) {
-      setError('google login failed – try again');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBiometricLogin = async () => {
-    if (!biometricAvailable) return;
-    setLoading(true);
-    try {
-      // Simple WebAuthn / browser fingerprint fallback
-      // In production: use Firebase Authentication with WebAuthn/passkeys
-      alert('biometric login coming soon – using email for now');
-      // For now fallback to email if stored
-    } catch (err) {
-      setError('biometric login failed');
-    } finally {
-      setLoading(false);
-    }
+  const createUserProfile = async (user) => {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, {
+      displayName: user.displayName || name || 'King',
+      email: user.email,
+      createdAt: serverTimestamp(),
+      stylesUsed: 0,
+      extraPreviews: 0,
+      successfulReferrals: 0,
+      hasCompletedFirstBooking: false
+    }, { merge: true });
   };
 
   return (
@@ -95,27 +92,38 @@ export default function Login() {
       fontFamily: 'Montserrat, sans-serif',
       display: 'grid',
       placeItems: 'center',
-      padding: '2rem 1rem'
+      padding: '1rem'
     }}>
-      <div style={{textAlign: 'center', maxWidth: '420px', width: '100%'}}>
-        
-        <h1 style={{fontSize: '3.8rem', fontWeight: '800', color: GOLD, margin: '0 0 0.5rem'}}>
+      <div style={{maxWidth: '420px', width: '100%', textAlign: 'center'}}>
+        <h1 style={{fontSize: '3.5rem', fontWeight: '800', color: GOLD, margin: '0 0 0.5rem'}}>
           esdras
         </h1>
-        <p style={{fontSize: '1.5rem', opacity: 0.9, marginBottom: '3rem'}}>
-          {isSignup ? 'join the grooming revolution' : 'welcome back, groomer'}
+        <p style={{fontSize: '1.6rem', opacity: 0.9, margin: '0 0 2rem'}}>
+          {isSignup ? 'join the precision grooming revolution' : 'welcome back, king'}
         </p>
 
-        {error && <p style={{color: '#ff6b6b', background: 'rgba(255,107,107,0.2)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem'}}>{error}</p>}
+        <form onSubmit={handleEmailAuth} style={{marginBottom: '2rem'}}>
+          {isSignup && (
+            <input
+              type="text"
+              placeholder="your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '1.4rem',
+                margin: '0.8rem 0',
+                borderRadius: '16px',
+                border: 'none',
+                background: 'rgba(255,255,255,0.1)',
+                color: 'white',
+                fontSize: '1.1rem',
+                outline: 'none'
+              }}
+            />
+          )}
 
-        <form onSubmit={handleEmailAuth} style={{
-          background: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(184,134,11,0.3)',
-          borderRadius: '24px',
-          padding: '2.5rem 2rem',
-          marginBottom: '2rem'
-        }}>
           <input
             type="email"
             placeholder="email"
@@ -124,15 +132,17 @@ export default function Login() {
             required
             style={{
               width: '100%',
-              padding: '1.2rem',
-              margin: '1rem 0',
-              borderRadius: '12px',
+              padding: '1.4rem',
+              margin: '0.8rem 0',
+              borderRadius: '16px',
               border: 'none',
               background: 'rgba(255,255,255,0.1)',
               color: 'white',
-              fontSize: '1.1rem'
+              fontSize: '1.1rem',
+              outline: 'none'
             }}
           />
+
           <input
             type="password"
             placeholder="password"
@@ -141,15 +151,18 @@ export default function Login() {
             required
             style={{
               width: '100%',
-              padding: '1.2rem',
-              margin: '1rem 0',
-              borderRadius: '12px',
+              padding: '1.4rem',
+              margin: '0.8rem 0',
+              borderRadius: '16px',
               border: 'none',
               background: 'rgba(255,255,255,0.1)',
               color: 'white',
-              fontSize: '1.1rem'
+              fontSize: '1.1rem',
+              outline: 'none'
             }}
           />
+
+          {error && <p style={{color: '#FFD700', margin: '1rem 0'}}>{error}</p>}
 
           <button
             type="submit"
@@ -158,63 +171,47 @@ export default function Login() {
               width: '100%',
               background: GOLD,
               color: 'black',
+              padding: '1.5rem',
               border: 'none',
-              padding: '1.4rem',
               borderRadius: '50px',
-              fontSize: '1.3rem',
+              fontSize: '1.5rem',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              marginTop: '1rem',
-              opacity: loading ? 0.7 : 1
+              margin: '1.5rem 0',
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'please wait...' : (isSignup ? 'create account' : 'log in')}
+            {loading ? 'processing...' : (isSignup ? 'create account' : 'log in')}
           </button>
         </form>
 
-        {/* Social & Biometric Options */}
-        <div style={{margin: '2rem 0'}}>
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            style={{
-              width: '100%',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'white',
-              border: `2px solid ${GOLD}`,
-              padding: '1.2rem',
-              borderRadius: '50px',
-              fontSize: '1.2rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginBottom: '1rem'
-            }}
-          >
-            continue with google
-          </button>
+        <div style={{margin: '2rem 0', opacity: 0.7}}>or</div>
 
-          {biometricAvailable && !isSignup && (
-            <button
-              onClick={handleBiometricLogin}
-              style={{
-                width: '100%',
-                background: GOLD,
-                color: 'black',
-                border: 'none',
-                padding: '1.2rem',
-                borderRadius: '50px',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              fingerprint login
-            </button>
-          )}
-        </div>
+        <button
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          style={{
+            width: '100%',
+            background: 'white',
+            color: NAVY,
+            padding: '1.5rem',
+            border: 'none',
+            borderRadius: '50px',
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1rem',
+            margin: '0 auto'
+          }}
+        >
+          <img src="/google-logo.svg" alt="Google" style={{height: '24px'}} />
+          continue with google
+        </button>
 
-        <p style={{opacity: 0.8}}>
-          {isSignup ? 'already have an account?' : "don't have an account?"} {' '}
+        <p style={{marginTop: '2.5rem', opacity: 0.7, fontSize: '1rem'}}>
+          {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => setIsSignup(!isSignup)}
             style={{background: 'none', border: 'none', color: GOLD, fontWeight: 'bold', cursor: 'pointer'}}
@@ -223,10 +220,10 @@ export default function Login() {
           </button>
         </p>
 
-        <p style={{marginTop: '3rem', opacity: 0.6, fontSize: '0.9rem'}}>
-          by continuing, you agree to our terms & privacy policy
+        <p style={{marginTop: '3rem', opacity: 0.5, fontSize: '0.9rem'}}>
+          by continuing, you agree to our terms • lagos precision grooming
         </p>
       </div>
     </div>
   );
-      }
+             }
