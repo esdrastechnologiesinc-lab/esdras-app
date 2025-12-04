@@ -1,22 +1,194 @@
-import React, { useState } from 'react';
+// src/components/importstyle.jsx — FINAL STYLE SNAP & IMPORT (lowercase + full viral flow)
+import React, { useState, useRef } from 'react';
+import { getAuth } from 'firebase/auth';
+import { doc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
+import { db } from '../firebase';
 
-export default function ImportStyle() {
-  const [img, setImg] = useState(null);
+const NAVY = '#001F3F';
+const GOLD = '#B8860B';
+
+export default function ImportStyle({ onClose, onStyleImported }) {
+  const [step, setStep] = useState('choose'); // choose | camera | library | crop | processing | done
+  const [sourceImg, setSourceImg] = useState(null);
+  const [croppedImg, setCroppedImg] = useState(null);
+  const [styleName, setStyleName] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  const startCamera = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    videoRef.current.srcObject = stream;
+    setStep('camera');
+  };
+
+  const captureFromCamera = () => {
+    const canvas = canvasRef.current;
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg');
+    setSourceImg(dataUrl);
+    videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+    setStep('crop');
+  };
+
+  const handleLibraryUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSourceImg(reader.result);
+        setStep('crop');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveStyle = async () => {
+    if (!croppedImg || !user) return;
+    setProcessing(true);
+
+    const newStyle = {
+      id: Date.now().toString(),
+      name: styleName || 'my imported style',
+      imageUrl: croppedImg,
+      importedAt: new Date(),
+      source: 'stylesnap'
+    };
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        customStyles: arrayUnion(newStyle),
+        stylesUsed: increment(1)
+      });
+
+      setProcessing(false);
+      setStep('done');
+      if (onStyleImported) onStyleImported(newStyle);
+      setTimeout(() => onClose?.(), 2000);
+    } catch (err) {
+      console.error(err);
+      alert('failed to save style – try again');
+      setProcessing(false);
+    }
+  };
 
   return (
-    <div style={{textAlign:'center', padding:'3rem'}}>
-      <h2>StyleSnap & Import</h2>
-      <p>Upload any hairstyle photo</p>
-      <input type="file" accept="image/*" onChange={(e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImg(reader.result);
-          setTimeout(() => alert("Style Imported! Added to your library"), 2000);
-        };
-        reader.readAsDataURL(file);
-      }} />
-      {img && <img src={img} style={{maxWidth:'100%', marginTop:'1rem', borderRadius:'12px'}} />}
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: NAVY,
+      color: 'white',
+      fontFamily: 'Montserrat, sans-serif',
+      display: 'grid',
+      placeItems: 'center',
+      zIndex: 9999,
+      padding: '1rem'
+    }}>
+      <div style={{maxWidth: '500px', width: '100%', textAlign: 'center'}}>
+
+        {/* choose source */}
+        {step === 'choose' && (
+          <>
+            <h1 style={{fontSize: '2.5rem', color: GOLD, marginBottom: '1rem'}}>stylesnap ai</h1>
+            <p style={{fontSize: '1.4rem', opacity: 0.9, marginBottom: '3rem'}}>
+              import any hairstyle in seconds
+            </p>
+            <div style={{display: 'grid', gap: '1.5rem'}}>
+              <button
+                onClick={startCamera}
+                style={{
+                  background: GOLD,
+                  color: 'black',
+                  border: 'none',
+                  padding: '2rem',
+                  borderRadius: '20px',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                📸 open camera
+              </button>
+              <label style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: `3px solid ${GOLD}`,
+                padding: '2rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontSize: '1.5rem',
+                fontWeight: 'bold'
+              }}>
+                🖼️ choose from library
+                <input type="file" accept="image/*" onChange={handleLibraryUpload} style={{display:'none'}} />
+              </label>
+            </div>
+            <button onClick={onClose} style={{marginTop:'2rem', opacity:0.7}}>cancel</button>
+          </>
+        )}
+
+        {/* live camera */}
+        {step === 'camera' && (
+          <>
+            <video ref={videoRef} autoPlay playsInline style={{maxWidth:'100%', borderRadius:'20px'}} />
+            <canvas ref={canvasRef} style={{display:'none'}} />
+            <div style={{marginTop:'1rem'}}>
+              <button onClick={captureFromCamera} style={{
+                background:GOLD, color:'black', border:'none', padding:'1.5rem 4rem',
+                borderRadius:'50px', fontWeight:'bold', fontSize:'1.4rem', cursor:'pointer'
+              }}>
+                capture hairstyle
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* simple crop placeholder – replace with real cropper later */}
+        {step === 'crop' && sourceImg && (
+          <>
+            <p style={{fontSize:'1.3rem'}}>crop to just the hairstyle</p>
+            <img src={sourceImg} alt="source" style={{maxWidth:'100%', borderRadius:'16px', margin:'1rem 0'}} />
+            <input
+              type="text"
+              placeholder="name this style (e.g. the saheed cut)"
+              value={styleName}
+              onChange={(e) => setStyleName(e.target.value)}
+              style={{
+                width:'100%', padding:'1rem', borderRadius:'12px', border:'none',
+                background:'rgba(255,255,255,0.1)', color:'white', margin:'1rem 0'
+              }}
+            />
+            <button
+              onClick={() => setCroppedImg(sourceImg)} // placeholder – real crop later
+              style={{
+                background:GOLD, color:'black', padding:'1.5rem 4rem',
+                borderRadius:'50px', fontWeight:'bold', fontSize:'1.4rem', cursor:'pointer'
+              }}
+            >
+              use this crop
+            </button>
+          </>
+        )}
+
+        {/* processing */}
+        {processing && (
+          <div>
+            <p style={{fontSize:'1.8rem'}}>processing style...</p>
+            <p>this takes a few seconds</p>
+          </div>
+        )}
+
+        {/* success */}
+        {step === 'done' && (
+          <div>
+            <p style={{fontSize:'2rem', color:GOLD}}>style saved!</p>
+            <p>ready to try on your head</p>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+      }
