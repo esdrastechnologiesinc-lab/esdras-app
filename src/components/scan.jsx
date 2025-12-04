@@ -1,166 +1,205 @@
-// src/components/scan.jsx — FINAL VERSION (100% matches your 15-page blueprint)
+// src/components/scan.jsx — FINAL ESDRAS 360° HEAD SCAN (real capture + blueprint exact)
 import React, { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
+const NAVY = '#001F3F';
+const GOLD = '#B8860B';
+
 export default function Scan() {
-  const [status, setStatus] = useState('checking'); // checking | consent | environment | scanning | uploading | done
+  const [status, setStatus] = useState('consent'); // consent | environment | scanning | uploading | done
   const [consent, setConsent] = useState(false);
-  const [countdown, setCountdown] = useState(8);
+  const [progress, setProgress] = useState(0);
   const videoRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunks = useRef([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const init = async () => {
+    const check = async () => {
       const user = auth.currentUser;
       if (!user) { navigate('/'); return; }
-
       const snap = await getDoc(doc(db, 'users', user.uid));
       if (snap.exists() && snap.data()?.has3DMesh) {
         navigate('/styles');
-      } else {
-        setStatus('consent');
       }
     };
-    init();
+    check();
   }, [navigate]);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setStatus('environment');
       }
     } catch (err) {
-      alert('Camera access denied');
+      alert('camera access required for your 3d scan');
     }
   };
 
-  const startScan = () => {
-    if (!consent) return alert('Please agree to privacy policy');
+  const startRecording = () => {
+    if (!consent) return;
+    recordedChunks.current = [];
+    setProgress(0);
+
+    const stream = videoRef.current.srcObject;
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+    mediaRecorderRef.current.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.current.push(e.data);
+    };
+
+    mediaRecorderRef.current.start();
     setStatus('scanning');
-    let t = 8;
+
+    // 8-second recording with smooth progress
+    const startTime = Date.now();
     const interval = setInterval(() => {
-      t--;
-      setCountdown(t);
-      if (t <= 0) {
+      const elapsed = (Date.now() - startTime) / 8000;
+      setProgress(Math.min(elapsed * 100, 100));
+      if (elapsed >= 1) {
         clearInterval(interval);
-        uploadScan();
+        mediaRecorderRef.current.stop();
+        stream.getTracks().forEach(t => t.stop());
+        uploadVideo();
       }
-    }, 1000);
+    }, 50);
   };
 
-  const uploadScan = async () => {
+  const uploadVideo = async () => {
     setStatus('uploading');
-    // Simulate upload + cloud processing
-    await new Promise(r => setTimeout(r, 4000));
-    
+    const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
+    // In real MVP: upload to Firebase Storage → trigger cloud function for mesh generation
+    // For pilot: simulate processing delay
+    await new Promise(r => setTimeout(r, 5000));
+
     await setDoc(doc(db, 'users', auth.currentUser.uid), {
       has3DMesh: true,
       stylesUsed: 0,
-      freeStylesRemaining: 10,
-      premiumPreviews: 0,
-      scanDate: new Date()
+      extraPreviews: 0  // referrals start at 0
     }, { merge: true });
 
     setStatus('done');
     setTimeout(() => navigate('/styles'), 3000);
   };
 
-  if (status === 'checking') return null;
-
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #001F3F, #0a3d62)',
+      background: `linear-gradient(135deg, ${NAVY}, #0a3d62)`,
       color: 'white',
+      fontFamily: 'Montserrat, sans-serif',
       textAlign: 'center',
-      padding: '1rem',
-      fontFamily: 'Montserrat, sans-serif'
+      padding: '2rem 1rem',
+      display: 'grid',
+      placeItems: 'center'
     }}>
-      <h1 style={{fontSize:'3rem', margin:'2rem 0', color:'#B8860B'}}>ESDRAS</h1>
+      <h1 style={{fontSize: '3.5rem', fontWeight: '800', color: GOLD, margin: '0 0 1rem'}}>
+        esdras
+      </h1>
 
-      {/* PHASE 1: Consent */}
+      {/* Consent */}
       {status === 'consent' && (
-        <div style={{maxWidth:'500px', margin:'0 auto'}}>
-          <h2 style={{fontSize:'2rem', color:'#B8860B'}}>One-Time 8-Second Scan</h2>
-          <p style={{fontSize:'1.3rem', lineHeight:'1.6'}}>
-            Unlock <strong>10 FREE</strong> hairstyle try-ons forever
+        <div style={{maxWidth: '520px'}}>
+          <h2 style={{fontSize: '2.4rem', color: GOLD, margin: '1rem 0'}}>one-time 8-second scan</h2>
+          <p style={{fontSize: '1.4rem', opacity: 0.9, lineHeight: '1.7'}}>
+            unlock <strong>10 free</strong> precision try-ons + unlimited future styles
           </p>
-          <div style={{background:'rgba(255,255,255,0.1)', padding:'2rem', borderRadius:'20px', margin:'2rem 0'}}>
-            <label style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'1rem', fontSize:'1.2rem'}}>
-              <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{width:'24px', height:'24px'}} />
-              <span>I agree to the <a href="/privacy" style={{color:'#B8860B', textDecoration:'underline'}}>Privacy Policy</a> and 3D data storage</span>
-            </label>
-          </div>
+          <label style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: '2rem 0', fontSize: '1.1rem'}}>
+            <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{width: '28px', height: '28px'}} />
+            <span>i agree to the <a href="/privacy" style={{color: GOLD, textDecoration: 'underline'}}>privacy policy</a> and secure 3d data storage</span>
+          </label>
           <button
             onClick={startCamera}
             disabled={!consent}
             style={{
-              background: consent ? '#B8860B' : '#555',
+              background: consent ? GOLD : '#444',
               color: 'black',
-              padding: '1.4rem 5rem',
+              padding: '1.6rem 6rem',
               border: 'none',
               borderRadius: '50px',
-              fontSize: '1.5rem',
+              fontSize: '1.6rem',
               fontWeight: 'bold',
-              opacity: consent ? 1 : 0.6
+              opacity: consent ? 1 : 0.6,
+              cursor: consent ? 'pointer' : 'not-allowed'
             }}
           >
-            Continue
+            start scan
           </button>
         </div>
       )}
 
-      {/* PHASE 2: Environment Check */}
+      {/* Environment */}
       {status === 'environment' && (
         <div>
-          <h2 style={{color:'#B8860B'}}>Perfect Conditions</h2>
-          <p>Good lighting ✓ Steady hand ✓ Face centered ✓</p>
-          <video ref={videoRef} autoPlay playsInline style={{width:'90%', maxWidth:'380px', borderRadius:'28px', border:'5px solid #B8860B', margin:'2rem 0'}} />
-          <button onClick={startScan} style={{background:'#B8860B', color:'black', padding:'1.4rem 5rem', border:'none', borderRadius:'50px', fontSize:'1.5rem', fontWeight:'bold'}}>
-            Start 8-Second Scan
+          <h2 style={{color: GOLD, fontSize: '2.2rem'}}>perfect conditions</h2>
+          <p style={{opacity: 0.9}}>bright even lighting • steady hand • face centered</p>
+          <video ref={videoRef} autoPlay playsInline muted style={{
+            width: '90%',
+            maxWidth: '420px',
+            borderRadius: '32px',
+            border: `6px solid ${GOLD}`,
+            margin: '2rem 0'
+          }} />
+          <button onClick={startRecording} style={{
+            background: GOLD,
+            color: 'black',
+            padding: '1.6rem 6rem',
+            border: 'none',
+            borderRadius: '50px',
+            fontSize: '1.6rem',
+            fontWeight: 'bold'
+          }}>
+            start 8-second scan
           </button>
         </div>
       )}
 
-      {/* PHASE 3: Scanning */}
+      {/* Scanning */}
       {status === 'scanning' && (
         <div>
-          <h2 style={{color:'#B8860B'}}>Rotate Slowly 360°</h2>
-          <p>Keep your head steady and turn slowly</p>
-          <div style={{width:'240px', height:'240px', border:'16px solid #B8860B', borderTop:'16px solid transparent', borderRadius:'50%', animation:'spin 2s linear infinite', margin:'3rem auto'}} />
-          <p style={{fontSize:'5rem', color:'#B8860B', margin:'2rem 0'}}>{countdown}</p>
-          <p>Stay still...</p>
+          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>rotate slowly 360°</h2>
+          <p>keep head steady • turn your body</p>
+          <div style={{position: 'relative', width: '260px', height: '260px', margin: '3rem auto'}}>
+            <svg width="260" height="260" viewBox="0 0 260 260">
+              <circle cx="130" cy="130" r="120" stroke="#0a3d62" strokeWidth="20" fill="none"/>
+              <circle cx="130" cy="130" r="120" stroke={GOLD} strokeWidth="20" fill="none"
+                strokeDasharray={`${progress * 7.54} 754`} transform="rotate(-90 130 130)"/>
+            </svg>
+            <p style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '4rem', fontWeight: 'bold', margin: 0}}>
+              {Math.round(progress)}%
+            </p>
+          </div>
+          <p style={{opacity: 0.8}}>stay still • keep face in frame</p>
         </div>
       )}
 
-      {/* PHASE 4: Uploading */}
+      {/* Uploading */}
       {status === 'uploading' && (
         <div>
-          <h2 style={{color:'#B8860B'}}>Building Your 3D Head...</h2>
-          <div style={{width:'200px', height:'200px', border:'12px solid #B8860B', borderTop:'12px solid transparent', borderRadius:'50%', animation:'spin 1.5s linear infinite', margin:'3rem auto'}} />
-          <p>Uploading scan data...</p>
+          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>building your 3d head...</h2>
+          <div style={{width: '220px', height: '220px', border: `16px solid ${GOLD}`, borderTop: '16px solid transparent', borderRadius: '50%', animation: 'spin 1.5s linear infinite', margin: '3rem auto'}} />
+          <p>processing on secure cloud • this takes a moment</p>
         </div>
       )}
 
-      {/* PHASE 5: Done */}
+      {/* Done */}
       {status === 'done' && (
         <div>
-          <h1 style={{fontSize:'3.5rem', color:'#B8860B'}}>Ready!</h1>
-          <p style={{fontSize:'1.6rem'}}>You now have <strong>10 FREE</strong> try-ons</p>
-          <p>Redirecting to your styles...</p>
+          <h2 style={{color: GOLD, fontSize: '3.5rem', fontWeight: '800'}}>ready!</h2>
+          <p style={{fontSize: '1.6rem'}}>you now have <strong>10 free try-ons</strong></p>
+          <p>redirecting to your styles...</p>
         </div>
       )}
 
       <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
-          }
+    }
