@@ -1,5 +1,5 @@
-// src/components/importstyle.jsx — FINAL STYLE SNAP & IMPORT (global library + women-ready + full premium UI)
-import React, { useState, useRef } from 'react';
+// src/components/importstyle.jsx — FINAL STYLE SNAP & IMPORT (global + personal library + women-ready)
+import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc, updateDoc, arrayUnion, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -19,7 +19,7 @@ export default function ImportStyle({ onClose, onStyleImported }) {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  // Load user gender for auto-tagging (women/men styles)
+  // Load user gender for auto-tagging
   useEffect(() => {
     if (user) {
       const userRef = doc(db, 'users', user.uid);
@@ -65,14 +65,14 @@ export default function ImportStyle({ onClose, onStyleImported }) {
     setProcessing(true);
 
     try {
-      // Use cropped image as final (replace with real cropper + storage upload later)
-      const imageUrl = croppedImg; // in real app: upload to Storage first
+      // Use cropped image as final (replace with real cropper + Storage upload later)
+      const imageUrl = croppedImg;
 
       const newStyle = {
         name: styleName,
         image: imageUrl,
-        gender: userData.gender || 'universal', // auto-tag based on user gender
-        length: 'medium', // AI can compute later
+        gender: userData.gender || 'universal',
+        length: 'medium',
         faceShape: [],
         rating: 0,
         isPremium: false,
@@ -81,10 +81,10 @@ export default function ImportStyle({ onClose, onStyleImported }) {
         isImported: true
       };
 
-      // Save to GLOBAL styles library (everyone sees it)
+      // 1. Save to GLOBAL styles library (everyone sees it)
       await addDoc(collection(db, 'styles'), newStyle);
 
-      // Optional: Save to user's personal library too
+      // 2. Save to user's personal library + increment counter
       await updateDoc(doc(db, 'users', user.uid), {
         customStyles: arrayUnion(newStyle),
         stylesUsed: increment(1)
@@ -235,4 +235,4 @@ export default function ImportStyle({ onClose, onStyleImported }) {
       </div>
     </div>
   );
-  }
+        }
