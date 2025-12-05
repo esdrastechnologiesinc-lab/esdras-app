@@ -1,4 +1,4 @@
-// src/components/barberdashboard.jsx — FINAL ESDRAS BARBER DASHBOARD (lowercase + 100% blueprint compliant)
+// src/components/barberdashboard.jsx — FINAL ESDRAS STYLIST DASHBOARD (women-inclusive + lowercase + 100% blueprint compliant)
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -33,7 +33,6 @@ export default function BarberDashboard() {
       setLoading(false);
     });
 
-    // all upcoming bookings (today + future)
     const now = new Date();
     const q = query(
       collection(db, 'bookings'),
@@ -46,7 +45,6 @@ export default function BarberDashboard() {
       const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setUpcomingBookings(bookings);
 
-      // today's earnings only
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todays = bookings.filter(b => b.date.toDate() >= today);
@@ -68,10 +66,11 @@ export default function BarberDashboard() {
   }
 
   if (!barber) {
-    return <div style={{textAlign:'center', padding:'5rem', color:'white', background:NAVY, fontFamily:'Montserrat'}}>complete your barber profile to unlock dashboard</div>;
+    return <div style={{textAlign:'center', padding:'5rem', color:'white', background:NAVY, fontFamily:'Montserrat'}}>complete your stylist profile to unlock dashboard</div>;
   }
 
   const nextTier = referrals % 5 === 0 ? 5 : 5 - (referrals % 5);
+  const isWomenSpecialist = barber.specialty?.includes('women') || barber.specialty === 'both';
 
   return (
     <div style={{
@@ -82,11 +81,18 @@ export default function BarberDashboard() {
       fontFamily:'Montserrat, sans-serif'
     }}>
       <h1 style={{textAlign:'center', color:GOLD, fontSize:'2.8rem', fontWeight:'800', margin:'1rem 0'}}>
-        barber dashboard
+        stylist dashboard
       </h1>
       <p style={{textAlign:'center', fontSize:'1.5rem', opacity:0.9}}>
         welcome, {barber.shopName || barber.name} 👑
       </p>
+
+      {/* women specialist badge */}
+      {isWomenSpecialist && (
+        <div style={{textAlign:'center', margin:'1rem 0', padding:'1rem', background:'rgba(184,134,11,0.3)', borderRadius:'20px', fontWeight:'bold'}}>
+          women hairstylist specialist
+        </div>
+      )}
 
       {/* commission incentive banner */}
       {commissionRate < 10 && (
@@ -189,4 +195,4 @@ export default function BarberDashboard() {
       </div>
     </div>
   );
-                                     }
+      }
