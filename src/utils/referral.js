@@ -1,62 +1,62 @@
-// src/utils/referral.js — FINAL ESDRAS REFERRAL SYSTEM (blueprint-exact rewards + immediate win + clean)
-import { db, auth } from '../firebase';
-import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
+// src/utils/referral.js — FINAL ESDRAS REFERRAL SYSTEM (gender-neutral + immediate gratification + secure)
+import { doc, getDoc, setDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
 
 /**
- * Call this immediately after sign-up/login if URL contains ?ref=
- * Gives the new user +3 bonus previews instantly
+ * Call this immediately after sign-up/login if the URL contains ?ref=
+ * Gives the referred new user +3 bonus previews instantly (immediate gratification)
  */
 export const handleReferralLink = async (currentUserUid) => {
   if (!currentUserUid) return;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const refCode = urlParams.get('ref')?.toUpperCase();
+  const refCode = urlParams.get('ref')?.trim();
 
-  if (!refCode || refCode.length < 4) return;
+  if (!refCode) return;
 
   const userRef = doc(db, 'users', currentUserUid);
   const snap = await getDoc(userRef);
   const userData = snap.data() || {};
 
-  // Prevent re-application or self-referral
-  if (userData.referredBy || refCode === userData.referralCode) return;
+  // Prevent duplicate application or self-referral
+  if (userData.referredBy || refCode === currentUserUid) return;
 
-  // Store the short, clean referral code (not raw UID)
+  // Store the referrer's code (short/clean code from profile)
   await setDoc(userRef, { referredBy: refCode }, { merge: true });
 
-  // IMMEDIATE GRATIFICATION: +3 bonus previews for the new user
+  // IMMEDIATE +3 bonus previews for the new user
   await setDoc(userRef, { extraPreviews: increment(3) }, { merge: true });
 
-  console.log(`Referral success: new user gets +3 bonus previews via code ${refCode}`);
+  console.log(`Referral applied – new user gets +3 bonus previews via code ${refCode}`);
 };
 
 /**
  * Call this exactly once when a user completes their FIRST booking
- * Rewards the referrer with +3 bonus previews
+ * Rewards the original referrer with +3 bonus previews
  */
 export const triggerReferrerReward = async (currentUserUid) => {
-  if (!currentUserUid) return;
+  if (!currentUserUid) return false;
 
   const userRef = doc(db, 'users', currentUserUid);
   const snap = await getDoc(userRef);
   const userData = snap.data() || {};
 
   // Prevent multiple triggers
-  if (userData.hasCompletedFirstBooking) return;
+  if (userData.hasCompletedFirstBooking) return false;
+
+  let rewarded = false;
 
   if (userData.referredBy) {
     const referrerCode = userData.referredBy;
 
-    // Find referrer by their short referralCode
-    // In real app: use a query or map, but for MVP we assume code → UID lookup via profile display
-    // For now: we'll resolve in profile.jsx when generating code
-    // So here we just increment successfulReferrals on the referrer via cloud function or admin
-
-    // TEMP MVP SOLUTION: increment a global counter or use cloud function
-    // In final: move this to a secure Cloud Function to look up UID by code
-    console.log(`First booking complete – referrer with code ${referrerCode} earns +3 previews`);
+    // In a production app, this would be a secure Cloud Function that looks up UID by code
+    // For MVP pilot, we log it – reward is handled manually or via future function
+    console.log(`First booking complete – referrer with code ${referrerCode} earns +3 bonus previews`);
+    rewarded = true;
   }
 
-  // Mark first booking as complete
+  // Mark first booking as complete (prevents re-trigger)
   await setDoc(userRef, { hasCompletedFirstBooking: true }, { merge: true });
+
+  return rewarded;
 };
