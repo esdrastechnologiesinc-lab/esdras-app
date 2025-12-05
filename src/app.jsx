@@ -53,7 +53,9 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/barber/dashboard" element={<BarberDashboard />} />
-          </Route>
+          </Route> 
+
+          <Route path="/barber-signature-styles" element={<ProtectedRoute><SignatureUpload /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
