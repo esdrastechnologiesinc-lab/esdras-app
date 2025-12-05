@@ -1,4 +1,5 @@
-// src/app.jsx — FINAL ESDRAS ROUTER (women-inclusive + clean)
+// src/app.jsx — FINAL ESDRAS ROUTER (women-inclusive + clean) 
+import SignatureStylesUpload from './components/signaturestylesupload';
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
