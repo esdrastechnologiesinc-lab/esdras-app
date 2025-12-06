@@ -60,6 +60,12 @@ export default function AdminDashboard() {
       <h2>total revenue: ₦{totalRevenue}</h2>
       <h2>transactions</h2>
       {transactions.map(t => <div>{t.type} - ₦{t.amount}</div>)}
+<h2>Reviews</h2>
+{reviews.map(r => <div>{r.stars} stars - {r.comment} <button onClick={() => resolveReview(r.id)}>Resolve</button></div>)}
+
+<h2>Feedback Tickets</h2>
+{feedback.map(f => <div>{f.issue} - Status: {f.status} <button onClick={() => resolveFeedback(f.id)}>Resolve</button></div>)}
+
       {/* Grant access UI for superadmin */}
       {accessLevel === 'superadmin' && (
         <div>
