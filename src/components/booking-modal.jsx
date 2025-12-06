@@ -1,4 +1,7 @@
-// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (mvp-ready + viral share + 100% blueprint)
+// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (mvp-ready + viral share + 100% blueprint) 
+import { getMessaging, getToken } from 'firebase/messaging';
+const messaging = getMessaging();
+getToken(messaging).then(token => console.log('FCM token:', token));
 import React, { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
