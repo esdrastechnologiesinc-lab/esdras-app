@@ -1,24 +1,25 @@
-// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (time slots + stylist confirmation + escrow + Google Calendar)
+// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (time slots + stylist confirmation + escrow + Google Calendar + rating trigger)
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { triggerReferrerReward } from '../utils/referral';
 import TimeSlotPicker from './timeslotpicker';
+import Rating from './rating'; // ← Add this import
 
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
 
 export default function BookingModal({ barber, styleName, renderedImageUrl, onClose }) {
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [firstBookingReward, setFirstBookingReward] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
   const [bookingStep, setBookingStep] = useState('slot'); // slot → waiting → confirmed
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [currentBookingId, setCurrentBookingId] = useState(null);
+  const [firstBookingReward, setFirstBookingReward] = useState(false);
+  const [showRating, setShowRating] = useState(false); // ← New state for rating modal
 
-  const amount = barber.priceHigh || 8000; // fallback price
+  const amount = barber.priceHigh || 8000;
 
-  // Listen for stylist confirmation after creating booking
+  // Listen for stylist confirmation
   useEffect(() => {
     if (!currentBookingId) return;
 
@@ -58,7 +59,7 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
       setBookingStep('waiting');
       setLoading(false);
 
-      // Trigger referral reward on first booking
+      // Trigger referral reward
       const rewarded = await triggerReferrerReward(auth.currentUser.uid);
       if (rewarded) setFirstBookingReward(true);
     } catch (err) {
@@ -69,11 +70,9 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
   };
 
   const handlePaymentAndCalendar = (confirmedTime) => {
-    // In real app: Charge user via Stripe, hold in escrow
-    // For MVP: Simulate success
     alert(`Payment of ₦${amount} charged. Held in escrow until service complete.`);
-
-    // Add to Google Calendar (iCal download)
+    
+    // Google Calendar iCal download
     const event = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -99,7 +98,7 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
     if (navigator.share && renderedImageUrl) {
       navigator.share({ title: 'My ESDRAS Booking', text, url: renderedImageUrl });
     } else {
-      alert('Share this with friends! (Booking confirmed)');
+      alert('Share this with friends! Booking confirmed.');
     }
     onClose();
   };
@@ -110,20 +109,14 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
       display: 'grid', placeItems: 'center', zIndex: 999, padding: '1rem'
     }}>
       <div style={{
-        background: NAVY,
-        color: 'white',
-        fontFamily: 'Montserrat, sans-serif',
-        padding: '3rem 2rem',
-        borderRadius: '28px',
-        border: `4px solid ${GOLD}`,
-        maxWidth: '90%',
-        textAlign: 'center'
+        background: NAVY, color: 'white', padding: '3rem 2rem',
+        borderRadius: '28px', border: `4px solid ${GOLD}`,
+        maxWidth: '90%', textAlign: 'center', fontFamily: 'Montserrat, sans-serif'
       }}>
+        {/* Step 1: Pick Time Slot */}
         {bookingStep === 'slot' && (
           <>
-            <h2 style={{color: GOLD, fontSize: '2.4rem', margin: '0 0 1rem'}}>
-              Book {styleName}
-            </h2>
+            <h2 style={{color: GOLD, fontSize: '2.4rem'}}>Book {styleName}</h2>
             <p>with <strong>{barber.shopName || barber.name}</strong></p>
 
             {renderedImageUrl && (
@@ -149,14 +142,16 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
           </>
         )}
 
+        {/* Step 2: Waiting for Stylist */}
         {bookingStep === 'waiting' && (
           <div>
             <h2 style={{color: GOLD}}>Request Sent!</h2>
-            <p>Waiting for {barber.shopName || barber.name} to confirm your time...</p>
+            <p>Waiting for {barber.shopName || barber.name} to confirm...</p>
             <p style={{opacity: 0.8}}>You'll be charged ₦{amount} only after confirmation</p>
           </div>
         )}
 
+        {/* Step 3: Confirmed + Rating */}
         {bookingStep === 'confirmed' && (
           <>
             <h2 style={{color: GOLD, fontSize: '2.6rem'}}>Booking Confirmed!</h2>
@@ -166,6 +161,18 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
                 Your friend got +3 bonus previews!
               </div>
             )}
+
+            <button
+              onClick={() => setShowRating(true)}
+              style={{
+                background: 'white', color: NAVY, padding: '1.5rem 4rem',
+                border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold',
+                margin: '1rem 0'
+              }}
+            >
+              Rate Your Stylist
+            </button>
+
             <button onClick={handleShare} style={{
               background: GOLD, color: 'black', padding: '1.5rem 4rem',
               border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
@@ -175,11 +182,14 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
           </>
         )}
 
-<button onClick={() => setShowRating(true)}>Rate Stylist</button>
-
-[showRating, setShowRating] = useState(false);
-
-{showRating && <Rating bookingId={currentBookingId} stylistId={barber.id} onClose={() => setShowRating(false)} />}
+        {/* Rating Modal */}
+        {showRating && (
+          <Rating
+            bookingId={currentBookingId}
+            stylistId={barber.id}
+            onClose={() => setShowRating(false)}
+          />
+        )}
 
         <button onClick={onClose} style={{marginTop: '2rem', color: '#888', background: 'none', border: 'none'}}>
           Close
@@ -187,4 +197,4 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
       </div>
     </div>
   );
-          }
+}
