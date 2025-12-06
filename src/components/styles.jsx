@@ -12,7 +12,12 @@ import { useScreenshot } from 'use-react-screenshot';
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
 
-export default function Styles() {
+export default function Styles() { 
+const renderStyle = async (style) => {
+  const response = await fetch('/api/render-style', { method: 'POST', body: JSON.stringify({ userMesh: userData.mesh, styleId: style.id }) });
+  const { renderedUrl } = await response.json();
+  setFrontViewImage(renderedUrl);
+};
   const [styles, setStyles] = useState([]);
   const [currentStyle, setCurrentStyle] = useState(null);
   const [userData, setUserData] = useState({});
