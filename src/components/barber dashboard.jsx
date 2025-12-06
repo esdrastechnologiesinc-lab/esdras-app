@@ -108,7 +108,10 @@ export default function BarberDashboard() {
         <div style={{background:'rgba(184,134,11,0.3)', padding:'1rem', borderRadius:'16px', textAlign:'center'}}>
           only {nextTier} more referrals → 1% off forever!
         </div>
-      )}
+      )} 
+      
+<input type="text" placeholder="bank account" onChange={e => setBankAccount(e.target.value)} />
+<button onClick={saveBankDetails}>save bank</button>
 
       {/* key metrics */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'1.5rem', margin:'2rem 0'}}>
