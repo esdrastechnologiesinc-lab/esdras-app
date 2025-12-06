@@ -68,6 +68,7 @@ export default function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/barber/dashboard" element={<BarberDashboard />} />
             <Route path="/barber-signature-styles" element={<ProtectedRoute><SignatureUpload /></ProtectedRoute>} /> 
+<Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
             <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} /> 
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           </Route> 
