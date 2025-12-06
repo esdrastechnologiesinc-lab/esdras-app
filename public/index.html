@@ -1,4 +1,7 @@
-<head>
+<head> 
+  // public/sw.js
+self.addEventListener('fetch', event => event.respondWith(caches.match(event.request)));
+  
   <meta charset="utf-8" />
   <link rel="icon" href="/esdras-logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
