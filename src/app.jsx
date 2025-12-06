@@ -17,6 +17,12 @@ import BarberDashboard from './components/barberdashboard';
 import BarberProfile from './components/barberprofile';
 import Barbers from './components/barbers';
 import ImportStyle from './components/importstyle';
+import { getRemoteConfig } from 'firebase/remote-config';
+const remoteConfig = getRemoteConfig();
+remoteConfig.fetchAndActivate().then(() => {
+  const freeLimit = remoteConfig.getNumber('free_styles_limit');
+  setFreeRemaining(freeLimit);
+});
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY || 'pk_test_...');
 
