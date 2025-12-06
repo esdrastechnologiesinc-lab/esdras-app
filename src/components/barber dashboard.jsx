@@ -174,7 +174,22 @@ export default function BarberDashboard() {
         >
           view public profile
         </a>
-      </div>
+      </div> 
+
+      {booking.status === 'pending' && (
+  <button
+    onClick={async () => {
+      await updateDoc(doc(db, 'bookings', booking.id), {
+        status: 'confirmed',
+        confirmedTime: booking.proposedTime
+      });
+      // Trigger payment charge + calendar add via Cloud Function
+    }}
+    style={{background: GOLD, color: 'black', padding: '1rem', borderRadius: '50px'}}
+  >
+    Confirm Booking
+  </button>
+)}
 
       {/* referral link */}
       <div style={{textAlign:'center', margin:'2rem 0'}}>
