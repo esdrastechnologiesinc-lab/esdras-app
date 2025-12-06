@@ -20,6 +20,18 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
 
     setLoading(true);
 
+    {
+  clientId: "user123",
+  stylistId: "stylist456",
+  styleName: "Low Fade",
+  proposedTime: Timestamp,     // user's selected time
+  confirmedTime: Timestamp | null, // null = pending, set when stylist confirms
+  status: "pending" | "confirmed" | "completed" | "cancelled",
+  amount: 5000,
+  createdAt: Timestamp,
+  serviceConfirmed: false // stylist marks when done
+    }
+
     try {
       // 1. Create booking request (no payment in MVP)
       await addDoc(collection(db, 'bookings'), {
