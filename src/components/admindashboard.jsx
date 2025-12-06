@@ -1,4 +1,12 @@
-// src/components/admindashboard.jsx — FINAL ESDRAS ADMIN DASHBOARD (full access + analytics)
+// src/components/admindashboard.jsx — FINAL ESDRAS ADMIN DASHBOARD (full access + analytics) 
+import { Line } from 'react-chartjs-2';
+
+const revenueChart = {
+  labels: ['Jan', 'Feb'], // from transactions
+  datasets: [{ label: 'Revenue', data: [1000, 2000], borderColor: GOLD }]
+};
+
+// Render <Line data={revenueChart} />
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
