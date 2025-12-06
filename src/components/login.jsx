@@ -62,6 +62,10 @@ export default function Login() {
         hasCompletedFirstBooking: false
       }, { merge: true });
 
+      navigator.geolocation.getCurrentPosition(pos => {
+  setDoc(doc(db, 'users', user.uid), { location: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+});
+
       handleReferralLink(user.uid);
       window.history.replaceState({}, '', window.location.pathname);
       navigate('/styles');
