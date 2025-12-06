@@ -175,6 +175,8 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
           </>
         )}
 
+<button onClick={() => setShowRating(true)}>Rate Stylist</button>
+
         <button onClick={onClose} style={{marginTop: '2rem', color: '#888', background: 'none', border: 'none'}}>
           Close
         </button>
