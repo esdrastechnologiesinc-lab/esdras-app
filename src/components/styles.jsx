@@ -72,18 +72,19 @@ const renderStyle = async (style) => {
 
     setCurrentStyle(style);
 
-    // Capture front-view for viral sharing
-    setTimeout(async () => {
-      const img = await takeScreenshot(canvasRef.current);
-      setFrontViewImage(img);
-    }, 800);
-
-    if (!isPremium && freeRemaining > 0) {
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-        stylesUsed: increment(1)
-      });
-    }
-  };
+    {currentStyle && frontViewImage ? (
+  // Show real AI-rendered image
+  <img 
+    src={frontViewImage} 
+    alt="Your new look" 
+    style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '20px'}} 
+  />
+) : (
+  // Show loading or fallback
+  <div style={{display: 'grid', placeItems: 'center', height: '100%'}}>
+    <p style={{color: GOLD, fontSize: '1.5rem'}}>Rendering your perfect cut...</p>
+  </div>
+)}
 
   return (
     <div style={{
