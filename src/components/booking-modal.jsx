@@ -177,6 +177,10 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
 
 <button onClick={() => setShowRating(true)}>Rate Stylist</button>
 
+[showRating, setShowRating] = useState(false);
+
+{showRating && <Rating bookingId={currentBookingId} stylistId={barber.id} onClose={() => setShowRating(false)} />}
+
         <button onClick={onClose} style={{marginTop: '2rem', color: '#888', background: 'none', border: 'none'}}>
           Close
         </button>
