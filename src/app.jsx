@@ -1,4 +1,11 @@
 // src/app.jsx — FINAL ESDRAS ROUTER (women-inclusive + clean) 
+import { QueryClient, QueryClientProvider } from 'react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 5 * 60 * 1000 } }
+});
+
+// Wrap <App> in <QueryClientProvider client={queryClient}>
 import SignatureStylesUpload from './components/signaturestylesupload';
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
