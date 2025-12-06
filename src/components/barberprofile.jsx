@@ -16,6 +16,14 @@ export default function BarberProfile() {
   const [showBooking, setShowBooking] = useState(false);
   const navigate = useNavigate();
 
+const [reviews, setReviews] = useState([]);
+
+useEffect(() => {
+  // ... existing fetchBarber
+  const reviewsQ = query(collection(db, 'reviews'), where('stylistId', '==', id), orderBy('createdAt', 'desc'));
+  onSnapshot(reviewsQ, snap => setReviews(snap.docs.map(d => d.data())));
+}, [id]);
+
   useEffect(() => {
     const fetchBarber = async () => {
       const snap = await getDoc(doc(db, 'barbers', id));
