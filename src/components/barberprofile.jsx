@@ -85,6 +85,17 @@ export default function BarberProfile() {
         <p style={{margin:'0.8rem 0', fontSize:'1.3rem'}}><strong>specialty:</strong> {barber.specialty || 'precision cuts & styling'}</p>
       </div>
 
+<h2 style={{color: GOLD, fontSize: '2.2rem', margin: '3rem 0 1.5rem'}}>reviews</h2>
+<div style={{display: 'grid', gap: '1.5rem'}}>
+  {reviews.map(r => (
+    <div key={r.id} style={{background: 'rgba(255,255,255,0.1)', padding: '1.5rem', borderRadius: '16px'}}>
+      <p style={{color: GOLD, fontSize: '1.4rem'}}>{'★'.repeat(r.stars)} ({r.stars}/5)</p>
+      <p>{r.comment}</p>
+    </div>
+  ))}
+  {reviews.length === 0 && <p style={{opacity: 0.7}}>no reviews yet – be the first!</p>}
+</div>
+
       {/* Signature Styles Grid */}
       <h2 style={{textAlign:'center', color:GOLD, fontSize:'2.2rem', margin:'3rem 0 1.5rem'}}>
         signature styles
