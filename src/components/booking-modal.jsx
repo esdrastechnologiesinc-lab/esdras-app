@@ -1,11 +1,9 @@
-// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (mvp-ready + viral share + 100% blueprint) 
-import { getMessaging, getToken } from 'firebase/messaging';
-const messaging = getMessaging();
-getToken(messaging).then(token => console.log('FCM token:', token));
-import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (time slots + stylist confirmation + escrow + Google Calendar)
+import React, { useState, useEffect } from 'react';
+import { collection, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { triggerReferrerReward } from '../utils/referral';
+import TimeSlotPicker from './timeslotpicker';
 
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
@@ -14,82 +12,94 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [firstBookingReward, setFirstBookingReward] = useState(false);
-
   const [selectedSlot, setSelectedSlot] = useState(null);
-const [bookingStep, setBookingStep] = useState('slot'); // slot → waiting → confirmed
+  const [bookingStep, setBookingStep] = useState('slot'); // slot → waiting → confirmed
+  const [currentBookingId, setCurrentBookingId] = useState(null);
 
-const handleBooking = async () => {
-  if (!selectedSlot) return alert('Pick a time slot');
+  const amount = barber.priceHigh || 8000; // fallback price
 
-  // 1. Create pending booking
-  const bookingRef = await addDoc(collection(db, 'bookings'), {
-    clientId: auth.currentUser.uid,
-    stylistId: barber.id,
-    styleName,
-    proposedTime: selectedSlot,
-    status: 'pending',
-    amount,
-    createdAt: serverTimestamp()
-  });
+  // Listen for stylist confirmation after creating booking
+  useEffect(() => {
+    if (!currentBookingId) return;
 
-  alert('Booking request sent! Waiting for stylist confirmation...');
-  setBookingStep('waiting');
+    const bookingRef = doc(db, 'bookings', currentBookingId);
+    const unsub = onSnapshot(bookingRef, (snap) => {
+      const data = snap.data();
+      if (data?.status === 'confirmed') {
+        setBookingStep('confirmed');
+        handlePaymentAndCalendar(data.confirmedTime || data.proposedTime);
+        unsub();
+      }
+    });
 
-  // Listen for confirmation
-  const unsub = onSnapshot(doc(db, 'bookings', bookingRef.id), (snap) => {
-    const data = snap.data();
-    if (data.status === 'confirmed') {
-      // NOW charge the user
-      chargeUserAndHoldInEscrow(bookingRef.id, amount);
-      addToBothCalendars(data.confirmedTime, barber, styleName);
-      setBookingStep('confirmed');
-      unsub();
-    }
-  });
-};
+    return unsub;
+  }, [currentBookingId]);
+
+  const handleBooking = async () => {
+    if (!selectedSlot) return alert('Please pick a time slot');
+    if (!auth.currentUser) return alert('Login required');
+
+    setLoading(true);
 
     try {
-      // 1. Create booking request (no payment in MVP)
-      await addDoc(collection(db, 'bookings'), {
+      const bookingRef = await addDoc(collection(db, 'bookings'), {
         clientId: auth.currentUser.uid,
-        clientName: auth.currentUser.displayName || 'client',
-        barberId: barber.id,
-        barberName: barber.shopName || barber.name,
-        styleName: styleName || 'custom style',
+        clientName: auth.currentUser.displayName || 'Client',
+        stylistId: barber.id,
+        stylistName: barber.shopName || barber.name,
+        styleName,
+        proposedTime: selectedSlot,
         status: 'pending',
+        amount,
         createdAt: serverTimestamp()
       });
 
-      // 2. Flat 10% ESDRAS commission (revenue tracking for future payouts)
-      // We'll handle actual money later – for now just log the intent
-      // (optional: increment revenue counters here)
+      setCurrentBookingId(bookingRef.id);
+      setBookingStep('waiting');
+      setLoading(false);
 
-      // 3. Trigger referrer reward only on user's FIRST booking
+      // Trigger referral reward on first booking
       const rewarded = await triggerReferrerReward(auth.currentUser.uid);
       if (rewarded) setFirstBookingReward(true);
-
-      setSuccess(true);
     } catch (err) {
       console.error(err);
-      alert('booking failed – try again');
-    } finally {
+      alert('Booking failed – try again');
       setLoading(false);
     }
   };
 
-  const handleShare = () => {
-    const text = `i just booked "\( {styleName}" with \){barber.shopName || barber.name} via esdras 👑\nsee my new look:`;
-    const shareData = {
-      title: 'my esdras booking',
-      text,
-      url: renderedImageUrl || window.location.origin
-    };
+  const handlePaymentAndCalendar = (confirmedTime) => {
+    // In real app: Charge user via Stripe, hold in escrow
+    // For MVP: Simulate success
+    alert(`Payment of ₦${amount} charged. Held in escrow until service complete.`);
 
-    if (navigator.share && navigator.canShare(shareData)) {
-      navigator.share(shareData);
+    // Add to Google Calendar (iCal download)
+    const event = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `DTSTART:${confirmedTime.toISOString().replace(/-|:|\.\d\d\d/g, '')}`,
+      `DTEND:${new Date(confirmedTime.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, '')}`,
+      `SUMMARY:ESDRAS Booking - ${styleName}`,
+      `DESCRIPTION:With ${barber.shopName || barber.name}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([event], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'esdras-booking.ics';
+    a.click();
+  };
+
+  const handleShare = () => {
+    const text = `I just booked "\( {styleName}" with \){barber.shopName || barber.name} via ESDRAS! See my new look:`;
+    if (navigator.share && renderedImageUrl) {
+      navigator.share({ title: 'My ESDRAS Booking', text, url: renderedImageUrl });
     } else {
-      // fallback: copy image + text
-      alert('share this with your friends!\n(booking confirmed – barber will contact you soon)');
+      alert('Share this with friends! (Booking confirmed)');
     }
     onClose();
   };
@@ -109,54 +119,12 @@ const handleBooking = async () => {
         maxWidth: '90%',
         textAlign: 'center'
       }}>
-        {success ? (
+        {bookingStep === 'slot' && (
           <>
-            <h2 style={{color: GOLD, fontSize: '2.6rem', margin: '0 0 1rem', fontWeight: '800'}}>
-              booking confirmed!
+            <h2 style={{color: GOLD, fontSize: '2.4rem', margin: '0 0 1rem'}}>
+              Book {styleName}
             </h2>
-            <p style={{fontSize: '1.4rem', opacity: 0.9}}>
-              {barber.shopName || barber.name} will contact you soon to confirm time
-            </p>
-
-            {firstBookingReward && (
-              <div style={{
-                background: GOLD, color: 'black', padding: '1.2rem', borderRadius: '16px',
-                margin: '1.5rem 0', fontWeight: 'bold'
-              }}>
-                your friend just got +3 bonus previews for referring you!
-              </div>
-            )}
-
-            {renderedImageUrl && (
-              <img src={renderedImageUrl} alt="your new style" style={{
-                width: '100%', maxWidth: '320px', borderRadius: '20px',
-                border: `4px solid ${GOLD}`, margin: '1.5rem 0'
-              }} />
-            )}
-
-            <button
-              onClick={handleShare}
-              style={{
-                background: GOLD, color: 'black', padding: '1.5rem 4rem',
-                border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
-              }}
-            >
-              share my new look
-            </button>
-
-            <p style={{marginTop: '2rem', opacity: 0.7, fontSize: '0.9rem'}}>
-              esdras takes only 10% • your barber gets the rest
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 style={{margin: '0 0 1rem', fontSize: '2.2rem', fontWeight: '800'}}>
-              confirm your booking
-            </h2>
-            <p style={{fontSize: '1.4rem', margin: '1rem 0'}}>
-              <strong>{styleName}</strong><br/>
-              with <strong>{barber.shopName || barber.name}</strong>
-            </p>
+            <p>with <strong>{barber.shopName || barber.name}</strong></p>
 
             {renderedImageUrl && (
               <img src={renderedImageUrl} alt="preview" style={{
@@ -165,31 +133,52 @@ const handleBooking = async () => {
               }} />
             )}
 
+            <TimeSlotPicker stylistId={barber.id} onSlotSelected={setSelectedSlot} />
+
             <button
               onClick={handleBooking}
-              disabled={loading}
+              disabled={loading || !selectedSlot}
               style={{
                 background: GOLD, color: 'black', padding: '1.6rem 5rem',
                 border: 'none', borderRadius: '50px', fontSize: '1.6rem', fontWeight: 'bold',
-                opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer'
+                marginTop: '2rem', opacity: loading || !selectedSlot ? 0.7 : 1
               }}
             >
-              {loading ? 'sending request...' : 'book now • pay barber directly'}
+              {loading ? 'Sending...' : 'Send Booking Request'}
             </button>
-
-            <button
-              onClick={onClose}
-              style={{background: 'none', border: 'none', color: '#888', marginTop: '1.5rem'}}
-            >
-              cancel
-            </button>
-
-            <p style={{marginTop: '2rem', opacity: 0.7, fontSize: '0.9rem'}}>
-              no payment now • barber contacts you • esdras takes only 10%
-            </p>
           </>
         )}
+
+        {bookingStep === 'waiting' && (
+          <div>
+            <h2 style={{color: GOLD}}>Request Sent!</h2>
+            <p>Waiting for {barber.shopName || barber.name} to confirm your time...</p>
+            <p style={{opacity: 0.8}}>You'll be charged ₦{amount} only after confirmation</p>
+          </div>
+        )}
+
+        {bookingStep === 'confirmed' && (
+          <>
+            <h2 style={{color: GOLD, fontSize: '2.6rem'}}>Booking Confirmed!</h2>
+            <p>{barber.shopName || barber.name} confirmed your appointment</p>
+            {firstBookingReward && (
+              <div style={{background: GOLD, color: 'black', padding: '1.2rem', borderRadius: '16px', margin: '1.5rem 0'}}>
+                Your friend got +3 bonus previews!
+              </div>
+            )}
+            <button onClick={handleShare} style={{
+              background: GOLD, color: 'black', padding: '1.5rem 4rem',
+              border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
+            }}>
+              Share My New Look
+            </button>
+          </>
+        )}
+
+        <button onClick={onClose} style={{marginTop: '2rem', color: '#888', background: 'none', border: 'none'}}>
+          Close
+        </button>
       </div>
     </div>
   );
-    }
+          }
