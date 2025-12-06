@@ -15,22 +15,38 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
   const [success, setSuccess] = useState(false);
   const [firstBookingReward, setFirstBookingReward] = useState(false);
 
-  const handleBooking = async () => {
-    if (!auth.currentUser) return alert('please log in first');
+  const [selectedSlot, setSelectedSlot] = useState(null);
+const [bookingStep, setBookingStep] = useState('slot'); // slot → waiting → confirmed
 
-    setLoading(true);
+const handleBooking = async () => {
+  if (!selectedSlot) return alert('Pick a time slot');
 
-    {
-  clientId: "user123",
-  stylistId: "stylist456",
-  styleName: "Low Fade",
-  proposedTime: Timestamp,     // user's selected time
-  confirmedTime: Timestamp | null, // null = pending, set when stylist confirms
-  status: "pending" | "confirmed" | "completed" | "cancelled",
-  amount: 5000,
-  createdAt: Timestamp,
-  serviceConfirmed: false // stylist marks when done
+  // 1. Create pending booking
+  const bookingRef = await addDoc(collection(db, 'bookings'), {
+    clientId: auth.currentUser.uid,
+    stylistId: barber.id,
+    styleName,
+    proposedTime: selectedSlot,
+    status: 'pending',
+    amount,
+    createdAt: serverTimestamp()
+  });
+
+  alert('Booking request sent! Waiting for stylist confirmation...');
+  setBookingStep('waiting');
+
+  // Listen for confirmation
+  const unsub = onSnapshot(doc(db, 'bookings', bookingRef.id), (snap) => {
+    const data = snap.data();
+    if (data.status === 'confirmed') {
+      // NOW charge the user
+      chargeUserAndHoldInEscrow(bookingRef.id, amount);
+      addToBothCalendars(data.confirmedTime, barber, styleName);
+      setBookingStep('confirmed');
+      unsub();
     }
+  });
+};
 
     try {
       // 1. Create booking request (no payment in MVP)
