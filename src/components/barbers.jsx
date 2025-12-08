@@ -1,7 +1,7 @@
-// src/components/barbers.jsx — FINAL ESDRAS BARBERS MARKETPLACE (women stylists + map + premium UI + 100% blueprint)
+// src/components/barbers.jsx — FINAL ESDRAS BARBERS MARKETPLACE (featured stylists by rating + women support + map + 100% working)
 import React, { useState, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,7 +27,7 @@ export default function Barbers() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // User location
+    // Get user location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -35,14 +35,21 @@ export default function Barbers() {
           setUserLocation(loc);
           map?.panTo(loc);
         },
-        () => console.log('location denied')
+        () => console.log('Location denied')
       );
     }
 
-    // Real-time barbers/stylists from Firestore
-    const unsub = onSnapshot(collection(db, 'barbers'), (snap) => {
+    // Fetch stylists — sorted by averageRating (highest first)
+    const q = query(
+      collection(db, 'barbers'),
+      orderBy('averageRating', 'desc') // ← Featured stylists by rating!
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBarbers(data);
+    }, (err) => {
+      console.error('Failed to load stylists:', err);
     });
 
     return unsub;
@@ -57,7 +64,6 @@ export default function Barbers() {
       navigate('/login');
       return;
     }
-    // Navigate to barber profile or open modal
     navigate(`/barber/${barber.id}`);
   };
 
@@ -71,10 +77,10 @@ export default function Barbers() {
       textAlign: 'center'
     }}>
       <h1 style={{fontSize: '3rem', fontWeight: '800', color: GOLD, margin: '0 0 1rem'}}>
-        find your perfect stylist
+        top rated stylists
       </h1>
       <p style={{fontSize: '1.4rem', opacity: 0.9, marginBottom: '2rem'}}>
-        {userLocation ? 'top stylists near you in lagos' : 'allow location for best matches'}
+        {userLocation ? 'best stylists near you in lagos' : 'allow location for best matches'}
       </p>
 
       {/* Specialty Filter */}
@@ -103,7 +109,7 @@ export default function Barbers() {
               position={{ lat: barber.lat, lng: barber.lng }}
               onClick={() => setSelected(barber)}
               icon={{
-                url: '/gold-target-icon.png', // precision target in Gold
+                url: '/gold-target-icon.png',
                 scaledSize: new window.google.maps.Size(56, 56)
               }}
             />
@@ -121,7 +127,9 @@ export default function Barbers() {
                 {selected.specialty && selected.specialty.includes('women') && (
                   <p style={{color: GOLD, fontWeight: 'bold', margin: '0.5rem 0'}}>women specialist</p>
                 )}
-                <p style={{margin: '0.4rem 0', opacity: 0.8}}>★ {selected.rating || '4.9'} • {selected.area}</p>
+                <p style={{margin: '0.4rem 0', opacity: 0.8}}>
+                  ★ {selected.averageRating?.toFixed(1) || '5.0'} • {selected.area}
+                </p>
                 <p style={{margin: '0.6rem 0', color: GOLD, fontWeight: 'bold'}}>
                   {selected.specialty || 'precision cuts & styling'}
                 </p>
@@ -157,4 +165,4 @@ export default function Barbers() {
       </p>
     </div>
   );
-                       }
+  }
