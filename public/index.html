@@ -1,26 +1,54 @@
-<head> 
-  // public/sw.js
-self.addEventListener('fetch', event => event.respondWith(caches.match(event.request)));
-  
-  <meta charset="utf-8" />
-  <link rel="icon" href="/esdras-logo.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#001F3F" />
-  <meta name="description" content="ESDRAS - Precision Grooming. Zero Regrets." />
-  
-  <!-- Favicon Set (All Devices & Browsers) -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/esdras-logo.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/esdras-logo.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/esdras-logo.png" />
-  <link rel="icon" type="image/png" href="/esdras-logo.png" />
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/esdras-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#001F3F" />
+    <meta name="description" content="ESDRAS — Precision Grooming. Zero Regrets. AI-powered hairstyle try-on & premium stylist booking in Lagos." />
 
-  <!-- Title -->
-  <title>ESDRAS - Precision Grooming. Zero Regrets</title>
+    <!-- Favicon Set (All Devices) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/esdras-logo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/esdras-logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/esdras-logo.png" />
+    <link rel="manifest" href="/manifest.json" />
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
-  
-  <style>
-    body { margin: 0; font-family: 'Montserrat', sans-serif; }
-  </style>
-</head>
+    <!-- Title -->
+    <title>ESDRAS — Precision Grooming. Zero Regrets.</title>
+
+    <!-- Fonts: Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+    <!-- Invisible ReCAPTCHA v3 — YOUR REAL KEY -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lct_yQsAAAAAJVkUCzXpBLz3sKJban0ocAAB_U7"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered: ', reg))
+            .catch(err => console.log('SW registration failed: ', err));
+        });
+      }
+    </script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #001F3F;
+        color: white;
+      }
+      #root {
+        min-height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run ESDRAS.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
