@@ -1,6 +1,6 @@
-// src/components/admindashboard.jsx — FINAL ESDRAS ADMIN DASHBOARD (full access + analytics + reviews + feedback)
+// src/components/admindashboard.jsx — FINAL ESDRAS ADMIN DASHBOARD (feedback resolve UI + revoke access + full premium UI)
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [feedback, setFeedback] = useState([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [accessLevel, setAccessLevel] = useState('viewer');
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const [reply, setReply] = useState('');
 
   const user = auth.currentUser;
 
@@ -28,7 +30,6 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Check admin access via custom claim
     const checkAdmin = async () => {
       const idTokenResult = await user.getIdTokenResult();
       if (idTokenResult.claims.isAdmin) {
@@ -40,7 +41,6 @@ export default function AdminDashboard() {
     };
     checkAdmin();
 
-    // Real-time data listeners
     const unsubs = [
       onSnapshot(collection(db, 'users'), snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
       onSnapshot(collection(db, 'barbers'), snap => setStylists(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
@@ -52,31 +52,33 @@ export default function AdminDashboard() {
       }),
       onSnapshot(collection(db, 'transactions'), snap => setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
       onSnapshot(collection(db, 'reviews'), snap => setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
-      onSnapshot(collection(db, 'feedback'), snap => setFeedback(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      onSnapshot(collection(db, 'feedback'), snap => setFeedback(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
     ];
 
     return () => unsubs.forEach(unsub => unsub());
   }, [user]);
 
-  const grantAccess = async (targetUserId, newLevel) => {
-    if (accessLevel !== 'superadmin') return alert('Superadmin only');
-    try {
-      await updateDoc(doc(db, 'admins', targetUserId), { accessLevel: newLevel });
-      alert('Access granted');
-    } catch (err) {
-      alert('Failed');
-    }
-  };
-
-  const resolveReview = async (reviewId) => {
-    await updateDoc(doc(db, 'reviews', reviewId), { status: 'resolved' });
-  };
-
   const resolveFeedback = async (feedbackId) => {
-    await updateDoc(doc(db, 'feedback', feedbackId), { status: 'resolved' });
+    if (reply.trim() === '') return alert('Enter a reply');
+
+    await updateDoc(doc(db, 'feedback', feedbackId), {
+      status: 'resolved',
+      reply,
+      resolvedBy: user.uid,
+      resolvedAt: serverTimestamp()
+    });
+    setSelectedFeedback(null);
+    setReply('');
+    alert('Feedback resolved');
   };
 
-  // Revenue Chart Data
+  const revokeAccess = async (targetUserId) => {
+    if (accessLevel !== 'superadmin') return alert('Superadmin only');
+    await setDoc(doc(db, 'admins', targetUserId), { accessLevel: 'none' }, { merge: true });
+    alert('Access revoked');
+  };
+
+  // Revenue Chart
   const revenueChart = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [{
@@ -142,31 +144,50 @@ export default function AdminDashboard() {
         feedback.map(f => (
           <div key={f.id} style={{background: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '12px', margin: '0.5rem 0'}}>
             <p><strong>{f.userId}</strong>: {f.issue}</p>
-            <button onClick={() => resolveFeedback(f.id)} style={{background: GOLD, color: 'black', padding: '0.5rem 1rem', borderRadius: '50px'}}>
+            <p>Status: {f.status}</p>
+            <button onClick={() => setSelectedFeedback(f)} style={{background: GOLD, color: 'black', padding: '0.5rem 1rem', borderRadius: '50px'}}>
               Resolve
             </button>
           </div>
         ))
       }
 
+      {/* Resolve UI */}
+      {selectedFeedback && (
+        <div style={{margin: '2rem 0', background: 'rgba(255,255,255,0.1)', padding: '2rem', borderRadius: '20px'}}>
+          <h3>Resolve Feedback</h3>
+          <p>{selectedFeedback.issue}</p>
+          <textarea
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Your reply (sent to user)"
+            style={{width: '100%', padding: '1rem', borderRadius: '12px', background: NAVY, color: 'white', border: '1px solid #444'}}
+          />
+          <button onClick={() => resolveFeedback(selectedFeedback.id)} style={{background: GOLD, color: 'black', padding: '1rem 2rem', borderRadius: '50px'}}>
+            Send & Resolve
+          </button>
+        </div>
+      )}
+
       {accessLevel === 'superadmin' && (
         <div style={{marginTop: '3rem', padding: '2rem', background: 'rgba(184,134,11,0.3)', borderRadius: '20px'}}>
-          <h2 style={{color: GOLD}}>Grant Admin Access</h2>
-          <input placeholder="User ID" id="grantId" style={{padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: 'white'}} />
+          <h2 style={{color: GOLD}}>Grant/Revoke Access</h2>
+          <input placeholder="User ID" id="accessId" style={{padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: 'white'}} />
           <select style={{padding: '1rem', margin: '0 1rem', borderRadius: '12px'}}>
             <option>viewer</option>
             <option>editor</option>
             <option>superadmin</option>
+            <option>none (revoke)</option>
           </select>
           <button onClick={() => {
-            const uid = document.getElementById('grantId').value;
+            const uid = document.getElementById('accessId').value;
             const level = document.querySelector('select').value;
             grantAccess(uid, level);
           }} style={{background: GOLD, color: 'black', padding: '1rem 2rem', borderRadius: '50px'}}>
-            Grant Access
+            Apply
           </button>
         </div>
       )}
     </div>
   );
-}
+    }
