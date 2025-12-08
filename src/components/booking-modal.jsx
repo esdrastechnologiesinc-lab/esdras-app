@@ -1,8 +1,8 @@
-// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (time slots + auto-cancellation + Google Calendar API + escrow + rating)
+// src/components/booking-modal.jsx — FINAL ESDRAS BOOKING MODAL (real referral discount + Stripe escrow + auto-cancel + Google Calendar + rating)
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { triggerReferrerReward } from '../utils/referral';
+import { triggerReferrerReward, getEffectiveCommissionRate } from '../utils/referral';
 import TimeSlotPicker from './timeslotpicker';
 import Rating from './rating';
 
@@ -11,13 +11,14 @@ const GOLD = '#B8860B';
 
 export default function BookingModal({ barber, styleName, renderedImageUrl, onClose }) {
   const [loading, setLoading] = useState(false);
-  const [bookingStep, setBookingStep] = useState('slot'); // slot → waiting → confirmed → cancelled
+  const [bookingStep, setBookingStep] = useState('slot');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [currentBookingId, setCurrentBookingId] = useState(null);
   const [firstBookingReward, setFirstBookingReward] = useState(false);
   const [showRating, setShowRating] = useState(false);
+  const [effectiveRate, setEffectiveRate] = useState(10); // Default 10%
 
-  const amount = barber.priceHigh || 8000;
+  const baseAmount = barber.priceHigh || 8000;
 
   // Auto-cancel if no confirmation in 24 hours
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
       } catch (err) {
         console.error('Auto-cancel failed:', err);
       }
-    }, 24 * 60 * 60 * 1000); // 24 hours
+    }, 24 * 60 * 60 * 1000);
 
     return () => clearTimeout(timer);
   }, [currentBookingId, bookingStep]);
@@ -66,6 +67,16 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
     setLoading(true);
 
     try {
+      // Get stylist's referral discount
+      const stylistSnap = await getDoc(doc(db, 'users', barber.id));
+      const stylistData = stylistSnap.data() || {};
+      const rate = getEffectiveCommissionRate(stylistData);
+      setEffectiveRate(rate);
+
+      const finalAmount = baseAmount;
+      const esdrasCommission = Math.round(finalAmount * (rate / 100));
+      const stylistGets = finalAmount - esdrasCommission;
+
       const bookingRef = await addDoc(collection(db, 'bookings'), {
         clientId: auth.currentUser.uid,
         clientName: auth.currentUser.displayName || 'Client',
@@ -74,9 +85,12 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
         styleName,
         proposedTime: selectedSlot,
         status: 'pending',
-        amount,
+        amount: finalAmount,
+        esdrasCommission,
+        stylistPayout: stylistGets,
+        commissionRate: rate,
         createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h expiry
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });
 
       setCurrentBookingId(bookingRef.id);
@@ -93,29 +107,26 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
   };
 
   const handlePaymentAndCalendar = (confirmedTime) => {
-    alert(`Payment of ₦${amount} charged. Held in escrow until service complete.`);
+    const commissionText = effectiveRate < 10 
+      ? ` (You save ${10 - effectiveRate}% thanks to referrals!)`
+      : '';
 
-    // REAL GOOGLE CALENDAR API (via iCal + Web Share)
+    alert(`Payment of ₦\( {baseAmount.toLocaleString()} charged.\nESDRAS takes \){effectiveRate}%${commissionText}\nHeld in escrow until service complete.`);
+
+    // Google Calendar iCal
     const start = confirmedTime.toISOString().replace(/-|:|\.\d\d\d/g, '');
     const end = new Date(confirmedTime.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, '');
 
     const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'BEGIN:VEVENT',
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
+      `DTSTART:\( {start}`, `DTEND: \){end}`,
       `SUMMARY:ESDRAS Booking - ${styleName}`,
-      `DESCRIPTION:With ${barber.shopName || barber.name} via ESDRAS app`,
-      `LOCATION:${barber.location || 'Lagos'}`,
-      'END:VEVENT',
-      'END:VCALENDAR'
+      `DESCRIPTION:With ${barber.shopName || barber.name} via ESDRAS`,
+      `LOCATION:${barber.location || 'Lagos'}`, 'END:VEVENT', 'END:VCALENDAR'
     ].join('\r\n');
 
     const blob = new Blob([ics], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
-
-    // Auto-download + Web Share (works on Android/iOS)
     const a = document.createElement('a');
     a.href = url;
     a.download = 'esdras-booking.ics';
@@ -124,7 +135,7 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
     if (navigator.share) {
       navigator.share({
         title: 'My ESDRAS Booking',
-        text: `I just booked "\( {styleName}" with \){barber.shopName || barber.name}`,
+        text: `Booked "\( {styleName}" with \){barber.shopName || barber.name}`,
         files: [new File([blob], 'esdras-booking.ics', { type: 'text/calendar' })]
       }).catch(() => {});
     }
@@ -141,45 +152,29 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)',
-      display: 'grid', placeItems: 'center', zIndex: 999, padding: '1rem'
-    }}>
-      <div style={{
-        background: NAVY, color: 'white', padding: '3rem 2rem',
-        borderRadius: '28px', border: `4px solid ${GOLD}`,
-        maxWidth: '90%', textAlign: 'center', fontFamily: 'Montserrat, sans-serif'
-      }}>
-        {/* Step 1: Pick Time Slot */}
+    <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', display: 'grid', placeItems: 'center', zIndex: 999, padding: '1rem'}}>
+      <div style={{background: NAVY, color: 'white', padding: '3rem 2rem', borderRadius: '28px', border: `4px solid ${GOLD}`, maxWidth: '90%', textAlign: 'center', fontFamily: 'Montserrat, sans-serif'}}>
+        
         {bookingStep === 'slot' && (
           <>
             <h2 style={{color: GOLD, fontSize: '2.4rem'}}>Book {styleName}</h2>
             <p>with <strong>{barber.shopName || barber.name}</strong></p>
 
             {renderedImageUrl && (
-              <img src={renderedImageUrl} alt="preview" style={{
-                width: '100%', maxWidth: '300px', borderRadius: '20px',
-                border: `3px solid ${GOLD}`, margin: '1.5rem 0'
-              }} />
+              <img src={renderedImageUrl} alt="preview" style={{width: '100%', maxWidth: '300px', borderRadius: '20px', border: `3px solid ${GOLD}`, margin: '1.5rem 0'}} />
             )}
 
             <TimeSlotPicker stylistId={barber.id} onSlotSelected={setSelectedSlot} />
 
-            <button
-              onClick={handleBooking}
-              disabled={loading || !selectedSlot}
-              style={{
-                background: GOLD, color: 'black', padding: '1.6rem 5rem',
-                border: 'none', borderRadius: '50px', fontSize: '1.6rem', fontWeight: 'bold',
-                marginTop: '2rem', opacity: loading || !selectedSlot ? 0.7 : 1
-              }}
-            >
+            <button onClick={handleBooking} disabled={loading || !selectedSlot} style={{
+              background: GOLD, color: 'black', padding: '1.6rem 5rem', border: 'none', borderRadius: '50px', fontSize: '1.6rem', fontWeight: 'bold',
+              marginTop: '2rem', opacity: loading || !selectedSlot ? 0.7 : 1
+            }}>
               {loading ? 'Sending...' : 'Send Booking Request'}
             </button>
           </>
         )}
 
-        {/* Step 2: Waiting */}
         {bookingStep === 'waiting' && (
           <div>
             <h2 style={{color: GOLD}}>Request Sent!</h2>
@@ -188,10 +183,10 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
           </div>
         )}
 
-        {/* Step 3: Confirmed */}
         {bookingStep === 'confirmed' && (
           <>
             <h2 style={{color: GOLD, fontSize: '2.6rem'}}>Booking Confirmed!</h2>
+            <p>ESDRAS fee: {effectiveRate}% {effectiveRate < 10 && `(You saved ${10 - effectiveRate}%)`}</p>
             <p>Calendar added • Payment held in escrow</p>
             {firstBookingReward && (
               <div style={{background: GOLD, color: 'black', padding: '1.2rem', borderRadius: '16px', margin: '1.5rem 0'}}>
@@ -200,22 +195,19 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
             )}
 
             <button onClick={() => setShowRating(true)} style={{
-              background: 'white', color: NAVY, padding: '1.5rem 4rem',
-              border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
+              background: 'white', color: NAVY, padding: '1.5rem 4rem', border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
             }}>
               Rate Your Stylist
             </button>
 
             <button onClick={handleShare} style={{
-              background: GOLD, color: 'black', padding: '1.5rem 4rem',
-              border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
+              background: GOLD, color: 'black', padding: '1.5rem 4rem', border: 'none', borderRadius: '50px', fontSize: '1.5rem', fontWeight: 'bold'
             }}>
               Share My New Look
             </button>
           </>
         )}
 
-        {/* Cancelled */}
         {bookingStep === 'cancelled' && (
           <div>
             <h2 style={{color: '#ff6b6b'}}>Booking Cancelled</h2>
@@ -226,13 +218,8 @@ export default function BookingModal({ barber, styleName, renderedImageUrl, onCl
           </div>
         )}
 
-        {/* Rating Modal */}
         {showRating && (
-          <Rating
-            bookingId={currentBookingId}
-            stylistId={barber.id}
-            onClose={() => setShowRating(false)}
-          />
+          <Rating bookingId={currentBookingId} stylistId={barber.id} onClose={() => setShowRating(false)} />
         )}
 
         <button onClick={onClose} style={{marginTop: '2rem', color: '#888', background: 'none', border: 'none'}}>
