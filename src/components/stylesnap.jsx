@@ -1,4 +1,5 @@
 // src/components/StyleSnap.jsx — ULTIMATE MERGED VERSION (Best of both + 100% spec compliant)
+import Replicate from 'replicate';
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
