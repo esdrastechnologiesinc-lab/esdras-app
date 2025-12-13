@@ -1,4 +1,5 @@
-// src/components/scan.jsx — FINAL ESDRAS 360° HEAD SCAN (real capture + blueprint exact)
+// src/components/scan.jsx — FINAL ESDRAS 360° HEAD SCAN (real capture + blueprint exact) 
+import Replicate from 'replicate';
 import React, { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
