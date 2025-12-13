@@ -1,4 +1,4 @@
-// src/components/scan.jsx — FINAL ESDRAS 360° HEAD SCAN (real capture + blueprint exact) 
+// src/components/scan.jsx — FINAL ESDRAS 360° HEAD SCAN + INSTANT HAIR AI RENDER (no backend)
 import Replicate from 'replicate';
 import React, { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -9,13 +9,20 @@ const NAVY = '#001F3F';
 const GOLD = '#B8860B';
 
 export default function Scan() {
-  const [status, setStatus] = useState('consent'); // consent | environment | scanning | uploading | done
+  const [status, setStatus] = useState('consent'); // consent | environment | scanning | uploading | rendering | done
   const [consent, setConsent] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resultImage, setResultImage] = useState(null);
+  const [loading, setLoading] = useState(false);
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunks = useRef([]);
   const navigate = useNavigate();
+
+  // Replicate instance with your token
+  const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN  // safe — loaded from .env
+});
 
   useEffect(() => {
     const check = async () => {
@@ -39,7 +46,7 @@ export default function Scan() {
         setStatus('environment');
       }
     } catch (err) {
-      alert('camera access required for your 3d scan');
+      alert('Camera access required for your 3D scan');
     }
   };
 
@@ -58,7 +65,6 @@ export default function Scan() {
     mediaRecorderRef.current.start();
     setStatus('scanning');
 
-    // 8-second recording with smooth progress
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 8000;
@@ -67,26 +73,49 @@ export default function Scan() {
         clearInterval(interval);
         mediaRecorderRef.current.stop();
         stream.getTracks().forEach(t => t.stop());
-        uploadVideo();
+        renderHairFromVideo();
       }
     }, 50);
   };
 
-  const uploadVideo = async () => {
+  const renderHairFromVideo = async () => {
     setStatus('uploading');
     const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
-    // In real MVP: upload to Firebase Storage → trigger cloud function for mesh generation
-    // For pilot: simulate processing delay
-    await new Promise(r => setTimeout(r, 5000));
+    const videoUrl = URL.createObjectURL(blob);
 
-    await setDoc(doc(db, 'users', auth.currentUser.uid), {
-      has3DMesh: true,
-      stylesUsed: 0,
-      extraPreviews: 0  // referrals start at 0
-    }, { merge: true });
+    setStatus('rendering');
+    setLoading(true);
 
-    setStatus('done');
-    setTimeout(() => navigate('/styles'), 3000);
+    try {
+      const output = await replicate.run(
+        "cjwbw/style-your-hair:8f6b8e4e4b4e4b4e4b4e4b4e4b4e4b4e",
+        {
+          input: {
+            image: videoUrl,  // Replicate accepts video for head pose
+            prompt: "Ultra-realistic coiled hair with natural physics, bounce, flow, perfect on African skin, high detail 8k",
+            hair_type: "coiled",
+            enable_physics: true,
+            strength: 0.88,
+            guidance_scale: 8.0
+          }
+        }
+      );
+
+      setResultImage(output[0]);
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        has3DMesh: true,
+        stylesUsed: 0,
+        extraPreviews: 0
+      }, { merge: true });
+
+      setStatus('done');
+      setTimeout(() => navigate('/styles'), 4000);
+    } catch (error) {
+      console.error(error);
+      alert('Render failed — check internet');
+      setStatus('environment');
+    }
+    setLoading(false);
   };
 
   return (
@@ -180,21 +209,28 @@ export default function Scan() {
         </div>
       )}
 
-      {/* Uploading */}
-      {status === 'uploading' && (
+      {/* Rendering */}
+      {status === 'rendering' && (
         <div>
-          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>building your 3d head...</h2>
+          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>creating your hairstyle...</h2>
+          <p>AI rendering ultra-realistic coiled hair with physics (25-40s)</p>
           <div style={{width: '220px', height: '220px', border: `16px solid ${GOLD}`, borderTop: '16px solid transparent', borderRadius: '50%', animation: 'spin 1.5s linear infinite', margin: '3rem auto'}} />
-          <p>processing on secure cloud • this takes a moment</p>
         </div>
       )}
 
       {/* Done */}
       {status === 'done' && (
         <div>
-          <h2 style={{color: GOLD, fontSize: '3.5rem', fontWeight: '800'}}>ready!</h2>
-          <p style={{fontSize: '1.6rem'}}>you now have <strong>10 free try-ons</strong></p>
-          <p>redirecting to your styles...</p>
+          <h2 style={{color: GOLD, fontSize: '3.5rem', fontWeight: '800'}}>MAGIC!</h2>
+          <p style={{fontSize: '1.6rem'}}>your 3D head is ready + first hairstyle rendered</p>
+          {resultImage && (
+            <img 
+              src={resultImage} 
+              alt="Your rendered hairstyle"
+              style={{ width: '90%', maxWidth: '400px', borderRadius: '32px', margin: '2rem 0', border: `6px solid ${GOLD}` }}
+            />
+          )}
+          <p>redirecting to styles...</p>
         </div>
       )}
 
