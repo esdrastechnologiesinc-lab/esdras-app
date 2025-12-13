@@ -4,15 +4,19 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, app } from '../firebase'; // Ensure 'app' (the initialized Firebase app) is exported from firebase.js
 import { useNavigate } from 'react-router-dom';
 
-// 🛑 NEW IMPORTS FOR FIREBASE FUNCTIONS 🛑
+// 🛑 FUNCTIONS IMPORTS 🛑
 import { getFunctions, httpsCallable } from "firebase/functions";
+// 🛑 STORAGE IMPORTS 🛑
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
 const NAVY = '#001F3F';
 const GOLD = '#B8860B';
 
-// Initialize Firebase Functions service with the deployed region
-const functions = getFunctions(app, 'us-central1'); 
+// Initialize Firebase services
+const functions = getFunctions(app, 'us-central1'); // Use your deployed region
+const storage = getStorage(app); 
+
 // Define the callable function once
 const renderHairCallable = httpsCallable(functions, 'renderHair');
 
@@ -28,16 +32,11 @@ export default function Scan() {
   const recordedChunks = useRef([]);
   const navigate = useNavigate();
 
-  // 🛑 REMOVED: Insecure Replicate initialization is removed. 
-  // const replicate = new Replicate({...})
-
   useEffect(() => {
     const check = async () => {
       const user = auth.currentUser;
       if (!user) { navigate('/'); return; }
       const snap = await getDoc(doc(db, 'users', user.uid));
-      // IMPORTANT: In a real app, you would upload the video/image to Storage here
-      // and get the URL before calling the Cloud Function.
       if (snap.exists() && snap.data()?.has3DMesh) {
         navigate('/styles');
       }
@@ -81,32 +80,40 @@ export default function Scan() {
       if (elapsed >= 1) {
         clearInterval(interval);
         mediaRecorderRef.current.stop();
+        // Stop all tracks (this turns off the camera light)
         stream.getTracks().forEach(t => t.stop());
         
-        // 🛑 TRIGGER THE NEW FUNCTION CALL 🛑
+        // Trigger the secure function call
         renderHairWithCloudFunction(); 
       }
     }, 50);
   };
+  
+  // 🛑 NEW: Function to upload the recorded video to Firebase Storage
+  const uploadBlobToStorage = async (blob) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User not authenticated for upload.');
+    
+    // Define the storage path: users/{uid}/scan_{timestamp}.webm
+    const filePath = `users/${user.uid}/scan_${Date.now()}.webm`;
+    const storageRef = ref(storage, filePath);
 
-  // 🛑 NEW IMPLEMENTATION: Calls the secure Cloud Function 🛑
+    // Upload the file
+    await uploadBytes(storageRef, blob, { contentType: 'video/webm' });
+
+    // Get the public URL for the Cloud Function to access
+    const publicUrl = await getDownloadURL(storageRef);
+    
+    return publicUrl;
+  };
+
+
+  // 🛑 UPDATED: Calls the secure Cloud Function with the uploaded URL 🛑
   const renderHairWithCloudFunction = async () => {
     setStatus('uploading');
     setLoading(true);
-
-    // TODO: In a production environment, you must:
-    // 1. Convert the recorded video Blob to a file.
-    // 2. Upload the file to Firebase Storage.
-    // 3. Get the public URL of the uploaded video.
-    // 4. For this example, we will use a hardcoded placeholder for the head image URL, 
-    //    as the style image URL will be selected on the next screen (/styles).
-
-    const headImageUrlPlaceholder = 'https://i.imgur.com/your-uploaded-head-image.jpg'; // REPLACE WITH ACTUAL UPLOADED URL
-    const hairstyleImageUrlPlaceholder = 'https://i.imgur.com/a-hairstyle-style.jpg'; // REPLACE WITH URL FROM /styles SELECTION
-    const hairType = "coiled"; 
-    
-    // Check for authenticated user before proceeding
     const user = auth.currentUser;
+
     if (!user) {
         console.error("User not authenticated for function call.");
         alert('Authentication error. Please log in again.');
@@ -115,39 +122,49 @@ export default function Scan() {
         return;
     }
 
-
-    setStatus('rendering');
-
     try {
-      const response = await renderHairCallable({
-        headImageUrl: headImageUrlPlaceholder,
-        hairstyleImageUrl: hairstyleImageUrlPlaceholder,
-        hairType: hairType,
-      });
+        // 1. UPLOAD THE RECORDED VIDEO/BLOB
+        const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
+        const headImageUrl = await uploadBlobToStorage(blob); // Get the public URL!
 
-      // The response.data contains the return value from the Cloud Function
-      const { renderedImage } = response.data;
-      
-      setResultImage(renderedImage);
-      
-      // Update Firestore state indicating the 3D mesh is created
-      await setDoc(doc(db, 'users', user.uid), {
-        has3DMesh: true,
-        stylesUsed: 0,
-        extraPreviews: 0
-      }, { merge: true });
+        // 2. CALL THE CLOUD FUNCTION WITH THE URL
+        setStatus('rendering');
 
-      setStatus('done');
-      setTimeout(() => navigate('/styles'), 4000);
+        // IMPORTANT: The hairstyleImageUrl and hairType should be selected on the /styles page.
+        // For now, we use a placeholder for the style image, as the scan is only for the head.
+        const hairstyleImageUrl = 'https://i.imgur.com/a-hairstyle-style.jpg'; // REPLACE THIS WITH A REAL STYLE IMAGE LATER
+        const hairType = "coiled"; 
+        
+        const response = await renderHairCallable({
+            headImageUrl: headImageUrl, // <-- Uses the actual uploaded URL
+            hairstyleImageUrl: hairstyleImageUrl,
+            hairType: hairType,
+        });
+
+        // 3. PROCESS RESPONSE
+        const { renderedImage } = response.data;
+        
+        setResultImage(renderedImage);
+        
+        // Update Firestore state indicating the 3D mesh is created
+        await setDoc(doc(db, 'users', user.uid), {
+          has3DMesh: true,
+          stylesUsed: 0,
+          extraPreviews: 0
+        }, { merge: true });
+
+        setStatus('done');
+        setTimeout(() => navigate('/styles'), 4000);
 
     } catch (e) {
-      // e will contain the error object thrown by the Cloud Function (e.g., HttpsError)
-      console.error("Cloud Function Render Failed:", e.code, e.message);
-      alert(`Render failed: ${e.message}. Check your console for details.`);
-      setStatus('environment');
+        // Handle Firebase and network errors gracefully
+        console.error("Function/Upload Render Failed:", e.code, e.message);
+        alert(`Render failed: ${e.message}. Please check your internet connection or console for details.`);
+        setStatus('environment');
     }
     setLoading(false);
   };
+
 
   return (
     <div style={{
@@ -240,11 +257,11 @@ export default function Scan() {
         </div>
       )}
 
-      {/* Rendering */}
-      {status === 'rendering' && (
+      {/* Rendering / Uploading */}
+      {(status === 'uploading' || status === 'rendering') && (
         <div>
-          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>creating your hairstyle...</h2>
-          <p>AI rendering ultra-realistic coiled hair with physics (25-40s)</p>
+          <h2 style={{color: GOLD, fontSize: '2.4rem'}}>{status === 'uploading' ? 'uploading video...' : 'creating your hairstyle...'}</h2>
+          <p>{status === 'uploading' ? 'uploading to secure storage' : 'AI rendering ultra-realistic coiled hair with physics (25-40s)'}</p>
           <div style={{width: '220px', height: '220px', border: `16px solid ${GOLD}`, borderTop: '16px solid transparent', borderRadius: '50%', animation: 'spin 1.5s linear infinite', margin: '3rem auto'}} />
         </div>
       )}
@@ -270,5 +287,5 @@ export default function Scan() {
       `}</style>
     </div>
   );
-                                }
-      
+            }
+        
