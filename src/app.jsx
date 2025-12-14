@@ -6,7 +6,7 @@ const queryClient = new QueryClient({
 });
 
 // Wrap <App> in <QueryClientProvider client={queryClient}>
-import SignatureStylesUpload from './components/signaturestylesupload.jsx'; // ADDED .jsx
+import SignatureStylesUpload from './components/signaturestylesupload.jsx'; 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -14,22 +14,27 @@ import { auth } from './firebase';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-import Login from './components/login.jsx'; // ADDED .jsx
-import Home from './components/home.jsx'; // ADDED .jsx
-import Scan from './components/scan.jsx'; // ADDED .jsx
-import Styles from './components/styles.jsx'; // ADDED .jsx
-import Checkout from './components/checkout.jsx'; // ADDED .jsx
-import Profile from './components/profile.jsx'; // ADDED .jsx
-import BarberDashboard from './components/barberdashboard.jsx'; // **CRITICAL FIX: ADDED .jsx**
-import BarberProfile from './components/barberprofile.jsx'; // ADDED .jsx
-import Barbers from './components/barbers.jsx'; // ADDED .jsx
-import ImportStyle from './components/importstyle.jsx'; // ADDED .jsx
+import Login from './components/login.jsx';
+import Home from './components/home.jsx';
+import Scan from './components/scan.jsx';
+import Styles from './components/styles.jsx';
+import Checkout from './components/checkout.jsx';
+import Profile from './components/profile.jsx';
+import BarberDashboard from './components/barberdashboard.jsx'; // CRITICAL FIX: .jsx added
+import BarberProfile from './components/barberprofile.jsx';
+import Barbers from './components/barbers.jsx';
+import ImportStyle from './components/importstyle.jsx';
+
+// ADDED MISSING IMPORTS
+import Help from './components/help.jsx';
+import Wallet from './components/wallet.jsx';
+import AdminDashboard from './components/admindashboard.jsx';
+
 import { getRemoteConfig } from 'firebase/remote-config';
 const remoteConfig = getRemoteConfig();
 remoteConfig.fetchAndActivate().then(() => {
   const freeLimit = remoteConfig.getNumber('free_styles_limit');
-  // Assuming setFreeRemaining is defined somewhere else, removing it for safety here if not
-  // setFreeRemaining(freeLimit); 
+  // setFreeRemaining(freeLimit); // Assuming this is handled elsewhere
 });
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY || 'pk_test_...');
@@ -68,7 +73,6 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/barber/dashboard" element={<BarberDashboard />} />
-            {/* Assuming these components are also defined and imported correctly with .jsx */}
             <Route path="/barber-signature-styles" element={<SignatureStylesUpload />} /> 
             <Route path="/help" element={<Help />} /> 
             <Route path="/wallet" element={<Wallet />} /> 
@@ -80,4 +84,4 @@ export default function App() {
       </BrowserRouter>
     </Elements>
   );
-      }
+  }
