@@ -25,10 +25,10 @@ import BarberProfile from './components/barberprofile.jsx';
 import Barbers from './components/barbers.jsx';
 import ImportStyle from './components/importstyle.jsx';
 
-// TEMPORARILY REMOVED IMPORTS FOR BUILD STABILITY
-// import Help from './components/help.jsx';
-// import Wallet from './components/wallet.jsx';
-// import AdminDashboard from './components/admindashboard.jsx';
+// RE-ADDED IMPORTS WITH .jsx FOR ALL FEATURES
+import Help from './components/help.jsx';
+import Wallet from './components/wallet.jsx';
+import AdminDashboard from './components/admindashboard.jsx';
 
 import { getRemoteConfig } from 'firebase/remote-config';
 const remoteConfig = getRemoteConfig();
@@ -74,10 +74,10 @@ export default function App() {
             <Route path="/barber/dashboard" element={<BarberDashboard />} />
             <Route path="/barber-signature-styles" element={<SignatureStylesUpload />} /> 
             
-            {/* COMMENTING OUT POTENTIAL BREAKERS */}
-            {/* <Route path="/help" element={<Help />} /> */}
-            {/* <Route path="/wallet" element={<Wallet />} /> */}
-            {/* <Route path="/admin" element={<AdminDashboard />} /> */}
+            {/* ALL FEATURES RESTORED */}
+            <Route path="/help" element={<Help />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/admin" element={<AdminDashboard />} />
           </Route> 
 
           <Route path="*" element={<Navigate to="/" />} />
