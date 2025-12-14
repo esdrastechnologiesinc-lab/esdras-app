@@ -1,5 +1,5 @@
 // src/app.jsx — FINAL ESDRAS ROUTER (women-inclusive + clean) 
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000 } }
