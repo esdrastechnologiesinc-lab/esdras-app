@@ -25,7 +25,7 @@ import BarberProfile from './components/barberprofile.jsx';
 import Barbers from './components/barbers.jsx';
 import ImportStyle from './components/importstyle.jsx';
 
-// REMOVING TEMPORARY IMPORTS TO AVOID BUILD ERRORS
+// TEMPORARILY REMOVED IMPORTS FOR BUILD STABILITY
 // import Help from './components/help.jsx';
 // import Wallet from './components/wallet.jsx';
 // import AdminDashboard from './components/admindashboard.jsx';
